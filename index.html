@@ -1,0 +1,1463 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#111827">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Family Hub">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Morgan Family Hub</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23111827'/%3E%3Cpath d='M14 44 L26 30 L35 38 L50 20' stroke='%233ec9d6' stroke-width='6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    html, body { margin: 0; background: #0f1624; }
+    body { padding: env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left); -webkit-text-size-adjust: 100%; }
+    * { -webkit-tap-highlight-color: transparent; }
+    button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid #64b5f6; outline-offset: 2px; }
+    select option { background: #141b2a; color: #e2e8f0; }
+    #boot { font-family: 'DM Sans', system-ui, sans-serif; color: #8899aa; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; text-align: center; }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/react@18.3.1/umd/react.production.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+</head>
+<body>
+  <div id="root"><div id="boot">Loading Morgan Family Hub...</div></div>
+  <script>
+  /* ===== PASTE YOUR SUPABASE SETTINGS HERE ===== */
+  const SUPABASE_URL = "https://svprblytdifspprgpbem.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN2cHJibHl0ZGlmc3BwcmdwYmVtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMyNDQyMjUsImV4cCI6MjEwODgyMDIyNX0.h_fsJI5g7-loxKRCnXdAED7QDX2fsHC4tg9BK6IroGU";
+  /* ===== END OF SETTINGS ===== */
+
+  </script>
+  <script>
+  if (!window.React || !window.ReactDOM) {
+    document.getElementById("boot").textContent = "The app could not load. Check your internet connection and reload the page.";
+  } else {
+"use strict";
+/* Morgan Family Hub - app code. Built from the Claude budget artifact. */
+const { useState, useEffect, useMemo, useRef } = React;
+/* ============ Calendar: Jun 2026 to May 2030 ============ */
+const LABELS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const ALL_MONTHS = (() => {
+    const out = [];
+    let y = 2026;
+    let m = 5;
+    while (y < 2030 || (y === 2030 && m <= 4)) {
+        out.push({ key: `${LABELS[m].toLowerCase()}${y}`, label: `${LABELS[m]} ${y}`, short: `${LABELS[m]} ${String(y).slice(2)}` });
+        m += 1;
+        if (m === 12) {
+            m = 0;
+            y += 1;
+        }
+    }
+    return out;
+})();
+const MONTH_KEYS = ALL_MONTHS.map((m) => m.key);
+const LAST_KEY = MONTH_KEYS[MONTH_KEYS.length - 1];
+const idxOf = (k) => MONTH_KEYS.indexOf(k);
+const CURRENT_IDX = (() => {
+    const d = new Date();
+    const i = idxOf(`${LABELS[d.getMonth()].toLowerCase()}${d.getFullYear()}`);
+    if (i !== -1)
+        return i;
+    return d < new Date(2026, 5, 1) ? 0 : MONTH_KEYS.length - 1;
+})();
+/* ============ Theme ============ */
+const C = {
+    head: "#f0f4ff", text: "#e2e8f0", sub: "#8899aa", mute: "#4a5a6c", line: "#2a3348",
+    card: "rgba(255,255,255,0.03)", green: "#56c97b", red: "#e07b54", amber: "#e8a838",
+    blue: "#64b5f6", purple: "#9b7fe8", teal: "#3ec9d6",
+};
+const inputStyle = {
+    width: "100%", boxSizing: "border-box", background: "rgba(255,255,255,0.05)", border: `1px solid ${C.line}`,
+    borderRadius: 8, padding: "8px 10px", color: C.text, fontSize: 13, outline: "none", fontFamily: "inherit",
+};
+const selectStyle = { ...inputStyle, cursor: "pointer" };
+const fieldLbl = { fontSize: 11, color: C.sub, marginBottom: 4 };
+const btn = (color, solid) => ({
+    background: solid ? color : `${color}1f`, border: `1px solid ${color}66`, borderRadius: 8, padding: "7px 13px",
+    color: solid ? "#fff" : color, fontSize: 12, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", fontFamily: "inherit",
+});
+const badge = (color) => ({
+    fontSize: 10, fontWeight: 700, color, background: `${color}1f`, border: `1px solid ${color}55`, borderRadius: 5, padding: "2px 7px",
+});
+const arrowBtn = (disabled) => ({
+    background: "rgba(255,255,255,0.05)", border: `1px solid ${C.line}`, borderRadius: 6, width: 26, height: 26,
+    color: disabled ? "#333" : C.sub, cursor: disabled ? "default" : "pointer", padding: 0,
+});
+const thStyle = { padding: "10px 14px", textAlign: "left", fontSize: 11, color: C.sub, fontWeight: 600, whiteSpace: "nowrap" };
+const tdStyle = { padding: "10px 14px", whiteSpace: "nowrap", fontSize: 13, verticalAlign: "top" };
+/* ============ Regions and expense fields ============ */
+const REGIONS = [
+    { id: "saudi", label: "Saudi Arabia", flag: "🇸🇦", color: "#5b8dee", tint: "rgba(91,141,238,0.06)", border: "rgba(91,141,238,0.25)" },
+    { id: "egypt", label: "Egypt", flag: "🇪🇬", color: "#e8a838", tint: "rgba(232,168,56,0.06)", border: "rgba(232,168,56,0.25)" },
+    { id: "other", label: "Other", flag: "🌍", color: "#9b7fe8", tint: "rgba(155,127,232,0.06)", border: "rgba(155,127,232,0.25)" },
+];
+const DEFAULT_EXPENSE_CATEGORIES = [
+    { key: "house_rent_sa", label: "House Rent", icon: "🏠🇸🇦", color: "#e07b54", region: "saudi" },
+    { key: "food_sa", label: "Food and Grocery", icon: "🥪🇸🇦", color: "#e8a838", region: "saudi" },
+    { key: "transport_sa", label: "Transportation", icon: "🚕🇸🇦", color: "#5b8dee", region: "saudi" },
+    { key: "invoices_sa", label: "Monthly Invoices", icon: "🧾🇸🇦", color: "#7ecba1", region: "saudi" },
+    { key: "entertainment_sa", label: "Entertainment", icon: "📦🇸🇦", color: "#3ec9d6", region: "saudi" },
+    { key: "emergency_sa", label: "Emergency", icon: "🚨🇸🇦", color: "#d96b8a", region: "saudi" },
+    { key: "badya_eg", label: "Badya + Club Installment", icon: "🏠🇪🇬", color: "#9b7fe8", region: "egypt" },
+    { key: "soha_eg", label: "Soha Expenses", icon: "🙋‍♀️🇪🇬", color: "#f0a500", region: "egypt" },
+    { key: "eg_house_rent", label: "EG House Rent", icon: "🏠🇪🇬", color: "#56c97b", region: "egypt" },
+    { key: "eg_expenses", label: "EG Expenses", icon: "🛒🇪🇬", color: "#adb5bd", region: "egypt" },
+    { key: "ali_school_eg", label: "Ali School Installment", icon: "🎓🇪🇬", color: "#4db8a8", region: "egypt" },
+    { key: "emergency_eg", label: "Emergency Egypt", icon: "🚨🇪🇬", color: "#e05252", region: "egypt" },
+    { key: "car_eg", label: "Car Expenses", icon: "🚗🇪🇬", color: "#c98b3e", region: "egypt" },
+    { key: "other_eg", label: "Other Expenses", icon: "❓🇪🇬", color: "#8fa3bf", region: "egypt", hasNote: true },
+    { key: "travel_tickets", label: "Travel Tickets", icon: "🇪🇬🇸🇦", color: "#64b5f6", region: "other" },
+];
+const COLOR_PALETTE = ["#e07b54", "#e8a838", "#5b8dee", "#7ecba1", "#3ec9d6", "#d96b8a", "#9b7fe8", "#f0a500", "#56c97b", "#adb5bd", "#4db8a8", "#e05252", "#c98b3e", "#8fa3bf", "#64b5f6"];
+const inferRegion = (item) => {
+    if (item === null || item === void 0 ? void 0 : item.region)
+        return item.region;
+    const icon = (item === null || item === void 0 ? void 0 : item.icon) || "";
+    const sa = icon.includes("🇸🇦");
+    const eg = icon.includes("🇪🇬");
+    if (sa && !eg)
+        return "saudi";
+    if (eg && !sa)
+        return "egypt";
+    return "other";
+};
+const withRegions = (cats) => (cats || []).map((c) => ({ ...c, region: inferRegion(c) }));
+const regionOf = (c) => c.region || inferRegion(c);
+/* ============ Numbers ============ */
+const num = (v) => { const n = parseFloat(v); return isNaN(n) ? 0 : n; };
+const r0 = (n) => Math.round(Number(n) || 0).toLocaleString("en-US");
+const fmt = (n) => "SAR " + r0(n);
+const sfmt = (n) => (n >= 0 ? "+" : "-") + "SAR " + r0(Math.abs(n));
+/* ============ Data shape ============ */
+const DEFAULT_MONTH_DATA = (cats) => {
+    const expenses = {};
+    const paid = {};
+    const notes = {};
+    (cats || []).forEach((c) => { expenses[c.key] = ""; paid[c.key] = false; if (c.hasNote)
+        notes[c.key] = ""; });
+    return { income: "", expenses, paid, notes, savings: "", savingsPaid: false };
+};
+const DEFAULT_DATA = (cats) => {
+    const d = {};
+    MONTH_KEYS.forEach((k) => { d[k] = DEFAULT_MONTH_DATA(cats); });
+    return d;
+};
+const hydrateData = (raw) => {
+    const src = raw && typeof raw === "object" ? raw : {};
+    const out = { ...src };
+    MONTH_KEYS.forEach((k) => {
+        var _e, _f;
+        const m = src[k] || {};
+        out[k] = {
+            income: (_e = m.income) !== null && _e !== void 0 ? _e : "", expenses: { ...(m.expenses || {}) }, paid: { ...(m.paid || {}) },
+            notes: { ...(m.notes || {}) }, savings: (_f = m.savings) !== null && _f !== void 0 ? _f : "", savingsPaid: !!m.savingsPaid,
+        };
+    });
+    return out;
+};
+const normalizeLibs = (libs) => (Array.isArray(libs) ? libs : []).map((l, i) => {
+    var _e;
+    return ({
+        ...l,
+        id: (_e = l.id) !== null && _e !== void 0 ? _e : Date.now() + i,
+        region: l.region || "saudi",
+        frequency: l.frequency || "monthly",
+        schedule: Array.isArray(l.schedule) ? l.schedule : [],
+        paidMonths: l.paidMonths || {},
+    });
+});
+const newLibForm = () => ({
+    name: "", amountSAR: "", frequency: "monthly", region: "saudi",
+    startMonth: MONTH_KEYS[0], endMonth: LAST_KEY, schedule: [],
+});
+/* ============ Installment schedules ============ */
+const FREQ_STEP = { monthly: 1, quarterly: 3, annual: 12 };
+const FREQ_LABEL = { monthly: "Monthly", quarterly: "Quarterly", annual: "Annual", custom: "Custom" };
+const installmentMonths = (lib) => {
+    if (lib.frequency === "custom") {
+        const keys = (lib.schedule || []).filter((s) => idxOf(s.month) !== -1 && num(s.amount) > 0).map((s) => s.month);
+        return [...new Set(keys)].sort((a, b) => idxOf(a) - idxOf(b));
+    }
+    const s = idxOf(lib.startMonth);
+    const e = idxOf(lib.endMonth);
+    if (s === -1 || e === -1)
+        return [];
+    const step = FREQ_STEP[lib.frequency] || 1;
+    const out = [];
+    for (let i = s; i <= e; i += step)
+        out.push(MONTH_KEYS[i]);
+    return out;
+};
+const libAmountIn = (lib, key) => {
+    if (lib.frequency === "custom") {
+        return (lib.schedule || []).filter((s) => s.month === key).reduce((t, s) => t + num(s.amount), 0);
+    }
+    return installmentMonths(lib).includes(key) ? num(lib.amountSAR) : 0;
+};
+/* ============ Small building blocks ============ */
+function Label({ children, color = C.sub, style }) {
+    return React.createElement("div", { style: { fontSize: 12, color, fontWeight: 600, ...style } }, children);
+}
+function Card({ children, style, onClick }) {
+    return (React.createElement("div", { onClick: onClick, style: { background: C.card, border: `1px solid ${C.line}`, borderRadius: 14, padding: 16, ...style } }, children));
+}
+function Tri({ v, rates, color = C.text, size = 14 }) {
+    return (React.createElement("div", null,
+        React.createElement("div", { style: { fontSize: size, fontWeight: 700, color } }, fmt(v)),
+        React.createElement("div", { style: { fontSize: 10, color: C.sub, display: "flex", gap: 10 } },
+            React.createElement("span", null,
+                "USD ",
+                r0(v * rates.usd)),
+            React.createElement("span", null,
+                "EGP ",
+                r0(v * rates.egp)))));
+}
+function DualInput({ value, onChange, rate, color = C.blue, hint, big }) {
+    const sar = value === undefined || value === null ? "" : value;
+    const n = parseFloat(sar);
+    const egp = sar === "" || isNaN(n) ? "" : String(Math.round(n * rate));
+    const h = hint !== undefined && hint !== null && hint !== "" && num(hint) !== 0 ? num(hint) : null;
+    const fs = big ? 18 : 13;
+    return (React.createElement("div", { style: { display: "flex", gap: 8 } },
+        React.createElement("div", { style: { flex: 1, minWidth: 0 } },
+            React.createElement("div", { style: { fontSize: 10, color: C.blue, marginBottom: 3 } }, "SAR \uD83C\uDDF8\uD83C\uDDE6"),
+            React.createElement("input", { type: "number", inputMode: "decimal", value: sar, placeholder: h !== null ? `plan ${r0(h)}` : "0", onChange: (e) => onChange(e.target.value), style: { ...inputStyle, background: "rgba(100,181,246,0.06)", border: "1px solid rgba(100,181,246,0.2)", color, fontSize: fs, fontWeight: 700 } })),
+        React.createElement("div", { style: { flex: 1, minWidth: 0 } },
+            React.createElement("div", { style: { fontSize: 10, color: C.amber, marginBottom: 3 } }, "EGP \uD83C\uDDEA\uD83C\uDDEC"),
+            React.createElement("input", { type: "number", inputMode: "decimal", value: egp, placeholder: h !== null ? `plan ${r0(h * rate)}` : "0", onChange: (e) => { const v = parseFloat(e.target.value); onChange(isNaN(v) ? "" : (v / rate).toFixed(2)); }, style: { ...inputStyle, background: "rgba(232,168,56,0.06)", border: "1px solid rgba(232,168,56,0.2)", color: C.amber, fontSize: fs, fontWeight: 700 } }))));
+}
+function Tick({ checked, onChange, on = "Paid", off = "Mark paid", color = C.green }) {
+    return (React.createElement("label", { style: { display: "flex", alignItems: "center", gap: 5, cursor: "pointer", flexShrink: 0 } },
+        React.createElement("input", { type: "checkbox", checked: !!checked, onChange: onChange, style: { width: 15, height: 15, cursor: "pointer", accentColor: color } }),
+        React.createElement("span", { style: { fontSize: 11, color: checked ? color : C.mute, fontWeight: 600 } }, checked ? `${on} ✓` : off)));
+}
+function RateBox({ label, value, onChange, color }) {
+    return (React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 6, background: "rgba(255,255,255,0.04)", border: `1px solid ${C.line}`, borderRadius: 10, padding: "5px 10px" } },
+        React.createElement("span", { style: { fontSize: 11, color: C.sub } }, "1 SAR ="),
+        React.createElement("input", { type: "number", step: "any", value: value, onChange: (e) => onChange(e.target.value), style: { width: 64, background: "transparent", border: "none", color, fontSize: 13, fontWeight: 700, outline: "none", textAlign: "center", fontFamily: "inherit" } }),
+        React.createElement("span", { style: { fontSize: 11, color: C.sub } }, label)));
+}
+function SectionTitle({ n, title, sub }) {
+    return (React.createElement("div", { style: { display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 14 } },
+        React.createElement("div", { style: { width: 24, height: 24, borderRadius: 12, background: "rgba(100,181,246,0.15)", color: C.blue, fontSize: 12, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 } }, n),
+        React.createElement("div", null,
+            React.createElement("div", { style: { fontSize: 16, fontWeight: 800, color: C.head } }, title),
+            sub && React.createElement("div", { style: { fontSize: 12, color: C.sub, marginTop: 2, maxWidth: 620 } }, sub))));
+}
+function MiniRow({ label, value, color }) {
+    return (React.createElement("div", { style: { display: "flex", justifyContent: "space-between", fontSize: 12, padding: "3px 0" } },
+        React.createElement("span", { style: { color: C.sub } }, label),
+        React.createElement("span", { style: { color, fontWeight: 600 } }, fmt(value))));
+}
+function Tag({ actual }) {
+    return (React.createElement("span", { style: { fontSize: 10, fontWeight: 700, color: actual ? C.green : C.sub, background: actual ? "rgba(86,201,123,0.12)" : "rgba(255,255,255,0.05)", border: `1px solid ${actual ? "rgba(86,201,123,0.35)" : C.line}`, borderRadius: 5, padding: "2px 6px" } }, actual ? "Actual" : "Plan"));
+}
+/* ============ Forecast engine (shared with the home screen) ============ */
+function computeRows(data, liabilities, categories, plan, priorSavings) {
+    let bal = num(priorSavings);
+    return MONTH_KEYS.map((key, i) => {
+        const d = data[key] || {};
+        const incomeEntered = d.income !== undefined && d.income !== "";
+        let anyEntered = incomeEntered;
+        let expenses = 0;
+        let actualExp = 0;
+        let paidExp = 0;
+        categories.forEach((c) => {
+            var _e, _f, _g;
+            const v = (_e = d.expenses) === null || _e === void 0 ? void 0 : _e[c.key];
+            const entered = v !== undefined && v !== "";
+            if (entered) {
+                anyEntered = true;
+                actualExp += num(v);
+                if ((_f = d.paid) === null || _f === void 0 ? void 0 : _f[c.key])
+                    paidExp += num(v);
+                expenses += num(v);
+            }
+            else {
+                expenses += num((_g = plan.expenses) === null || _g === void 0 ? void 0 : _g[c.key]);
+            }
+        });
+        const income = incomeEntered ? num(d.income) : num(plan.income);
+        const libs = liabilities
+            .map((lib) => ({ lib, amt: libAmountIn(lib, key) }))
+            .filter((x) => x.amt > 0)
+            .sort((a, b) => b.amt - a.amt);
+        const inst = libs.reduce((t, x) => t + x.amt, 0);
+        const paidInst = libs.reduce((t, x) => { var _e; return t + (((_e = x.lib.paidMonths) === null || _e === void 0 ? void 0 : _e[key]) ? x.amt : 0); }, 0);
+        const flow = income - expenses - inst;
+        bal += flow;
+        const tracked = anyEntered || i <= CURRENT_IDX;
+        const unpaid = tracked ? (actualExp - paidExp) + (inst - paidInst) : 0;
+        return {
+            key, i, label: ALL_MONTHS[i].label, short: ALL_MONTHS[i].short,
+            income, expenses, inst, flow, balance: bal, actual: anyEntered, tracked, unpaid, libs,
+        };
+    });
+}
+/* ============ Budget module ============ */
+function BudgetTool({ initial, rev, onChange, saveLabel, saveError, onHome, banner }) {
+    const [categories, setCategories] = useState(DEFAULT_EXPENSE_CATEGORIES);
+    const [data, setData] = useState(() => DEFAULT_DATA(DEFAULT_EXPENSE_CATEGORIES));
+    const [liabilities, setLiabilities] = useState([]);
+    const [sarToEgp, setSarToEgp] = useState(14.1);
+    const [sarToUsd, setSarToUsd] = useState(0.2667);
+    const [priorSavings, setPriorSavings] = useState("");
+    const [plan, setPlan] = useState({ income: "", expenses: {} });
+    const [buffer, setBuffer] = useState("");
+    const [loading, setLoading] = useState(true);
+    const skipNextRef = useRef(false);
+    const baselineRef = useRef(null);
+    const [view, setView] = useState("forecast");
+    const [activeMonthIdx, setActiveMonthIdx] = useState(CURRENT_IDX);
+    const [showTimeline, setShowTimeline] = useState(false);
+    const [pendingDelete, setPendingDelete] = useState(null);
+    const [showLibForm, setShowLibForm] = useState(false);
+    const [libForm, setLibForm] = useState(newLibForm);
+    const [editingLibId, setEditingLibId] = useState(null);
+    const [showCatForm, setShowCatForm] = useState(false);
+    const [catForm, setCatForm] = useState({ label: "", icon: "💵", color: COLOR_PALETTE[0], hasNote: false, region: "saudi" });
+    const [showBackup, setShowBackup] = useState(false);
+    const [backupTab, setBackupTab] = useState("export");
+    const [importText, setImportText] = useState("");
+    const [backupMsg, setBackupMsg] = useState("");
+    const egpRate = num(sarToEgp) || 14.1;
+    const usdRate = num(sarToUsd) || 0.2667;
+    const rates = { egp: egpRate, usd: usdRate };
+    /* ---------- load / save ---------- */
+    const applySnapshot = (p) => {
+        var _e, _f, _g, _h;
+        const cats = withRegions(((_e = p.categories) === null || _e === void 0 ? void 0 : _e.length) ? p.categories : DEFAULT_EXPENSE_CATEGORIES);
+        setCategories(cats);
+        setData(hydrateData(p.data));
+        setLiabilities(normalizeLibs(p.liabilities));
+        if (p.sarToEgp)
+            setSarToEgp(p.sarToEgp);
+        if (p.sarToUsd)
+            setSarToUsd(p.sarToUsd);
+        if (p.priorSavings !== undefined)
+            setPriorSavings(p.priorSavings);
+        setPlan({ income: (_g = (_f = p.plan) === null || _f === void 0 ? void 0 : _f.income) !== null && _g !== void 0 ? _g : "", expenses: ((_h = p.plan) === null || _h === void 0 ? void 0 : _h.expenses) || {} });
+        if (p.buffer !== undefined)
+            setBuffer(p.buffer);
+    };
+    useEffect(() => {
+        if (initial)
+            applySnapshot(initial);
+        skipNextRef.current = true;
+        setLoading(false);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [rev]);
+    const snapshot = useMemo(() => ({ data, liabilities, sarToEgp, sarToUsd, priorSavings, categories, plan, buffer }), [data, liabilities, sarToEgp, sarToUsd, priorSavings, categories, plan, buffer]);
+    const backupJSON = useMemo(() => JSON.stringify(snapshot), [snapshot]);
+    useEffect(() => {
+        if (loading)
+            return;
+        if (skipNextRef.current) {
+            skipNextRef.current = false;
+            baselineRef.current = backupJSON;
+            return;
+        }
+        if (backupJSON === baselineRef.current)
+            return;
+        baselineRef.current = backupJSON;
+        onChange(snapshot);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [backupJSON, loading]);
+    /* ---------- forecast engine ---------- */
+    const rows = useMemo(() => computeRows(data, liabilities, categories, plan, priorSavings), [data, liabilities, categories, plan, priorSavings]);
+    const bufferV = num(buffer);
+    const minRow = rows.reduce((m, r) => (r.balance < m.balance ? r : m), rows[0]);
+    const endRow = rows[rows.length - 1];
+    const firstNeg = rows.find((r) => r.balance < 0) || null;
+    const firstLow = bufferV > 0 ? rows.find((r) => r.balance < bufferV) || null : null;
+    const problem = firstLow || firstNeg;
+    const tone = firstNeg ? C.red : firstLow ? C.amber : C.green;
+    const shortfall = Math.max(0, (bufferV > 0 ? bufferV : 0) - minRow.balance);
+    const fixMonths = problem ? Math.max(1, problem.i - CURRENT_IDX + 1) : 1;
+    const perMonth = shortfall / fixMonths;
+    const causeRow = problem
+        ? (problem.flow < 0 && problem.libs.length
+            ? problem
+            : rows.slice(0, problem.i + 1).filter((r) => r.flow < 0 && r.libs.length).sort((a, b) => a.flow - b.flow)[0] || null)
+        : null;
+    const cause = causeRow ? causeRow.libs[0] : null;
+    const planMissing = num(plan.income) === 0;
+    const statusShort = firstNeg ? `Negative in ${firstNeg.short}` : firstLow ? `Low in ${firstLow.short}` : "On track";
+    const pressure = rows.filter((r) => r.i >= CURRENT_IDX && r.flow < 0);
+    const next3 = rows.slice(CURRENT_IDX, CURRENT_IDX + 3);
+    const chartData = rows.map((r) => ({ name: r.short, balance: Math.round(r.balance), flow: Math.round(r.flow) }));
+    const remainingRows = rows.slice(CURRENT_IDX);
+    const avgInst = remainingRows.reduce((t, r) => t + r.inst, 0) / Math.max(1, remainingRows.length);
+    const planSpend = categories.reduce((t, c) => { var _e; return t + num((_e = plan.expenses) === null || _e === void 0 ? void 0 : _e[c.key]); }, 0);
+    const planLeft = num(plan.income) - planSpend;
+    const balColor = (v) => (v < 0 ? C.red : v < bufferV ? C.amber : C.teal);
+    /* ---------- selected month ---------- */
+    const mk = MONTH_KEYS[activeMonthIdx];
+    const md = data[mk] || DEFAULT_MONTH_DATA(categories);
+    const row = rows[activeMonthIdx];
+    const eff = (key) => { var _e, _f; const v = (_e = md.expenses) === null || _e === void 0 ? void 0 : _e[key]; return v !== undefined && v !== "" ? num(v) : num((_f = plan.expenses) === null || _f === void 0 ? void 0 : _f[key]); };
+    const effIncome = md.income !== undefined && md.income !== "" ? num(md.income) : num(plan.income);
+    const regionStats = REGIONS.map((r) => {
+        const cats = categories.filter((c) => regionOf(c) === r.id);
+        const libs = row.libs.filter((x) => (x.lib.region || "saudi") === r.id);
+        const exp = cats.reduce((t, c) => t + eff(c.key), 0);
+        const inst = libs.reduce((t, x) => t + x.amt, 0);
+        return { ...r, cats, libs, exp, inst, total: exp + inst };
+    });
+    const monthSavings = num(md.savings);
+    const allocated = regionStats.reduce((t, r) => t + r.total, 0) + monthSavings;
+    const left = effIncome - allocated;
+    /* ---------- mutations ---------- */
+    const setMonth = (fn) => setData((prev) => ({ ...prev, [mk]: fn(prev[mk] || DEFAULT_MONTH_DATA(categories)) }));
+    const setExp = (key, v) => setMonth((m) => ({ ...m, expenses: { ...(m.expenses || {}), [key]: v } }));
+    const togglePaid = (key) => setMonth((m) => { var _e; return ({ ...m, paid: { ...(m.paid || {}), [key]: !((_e = m.paid) === null || _e === void 0 ? void 0 : _e[key]) } }); });
+    const setNote = (key, v) => setMonth((m) => ({ ...m, notes: { ...(m.notes || {}), [key]: v } }));
+    const resetMonth = () => setMonth((m) => ({ ...DEFAULT_MONTH_DATA(categories), income: m.income }));
+    const toggleLibPaid = (id, key) => setLiabilities((prev) => prev.map((l) => { var _e; return (l.id === id ? { ...l, paidMonths: { ...(l.paidMonths || {}), [key]: !((_e = l.paidMonths) === null || _e === void 0 ? void 0 : _e[key]) } } : l); }));
+    const setPlanExp = (key, v) => setPlan((p) => ({ ...p, expenses: { ...(p.expenses || {}), [key]: v } }));
+    const askDelete = (id, fn) => { if (pendingDelete === id) {
+        fn();
+        setPendingDelete(null);
+    }
+    else
+        setPendingDelete(id); };
+    const openNewLib = () => { setEditingLibId(null); setLibForm(newLibForm()); setShowLibForm(true); };
+    const openEditLib = (lib) => {
+        var _e;
+        setEditingLibId(lib.id);
+        setLibForm({
+            name: lib.name || "", amountSAR: (_e = lib.amountSAR) !== null && _e !== void 0 ? _e : "", frequency: lib.frequency || "monthly", region: lib.region || "saudi",
+            startMonth: lib.startMonth || MONTH_KEYS[0], endMonth: lib.endMonth || LAST_KEY, schedule: (lib.schedule || []).map((s) => ({ ...s })),
+        });
+        setShowLibForm(true);
+    };
+    const libFormValid = !!libForm.name.trim() && (libForm.frequency === "custom" ? libForm.schedule.some((s) => num(s.amount) > 0) : num(libForm.amountSAR) > 0);
+    const saveLib = () => {
+        if (!libFormValid)
+            return;
+        const clean = { ...libForm, name: libForm.name.trim(), schedule: libForm.schedule.filter((s) => num(s.amount) > 0) };
+        if (editingLibId !== null)
+            setLiabilities((prev) => prev.map((l) => (l.id === editingLibId ? { ...l, ...clean } : l)));
+        else
+            setLiabilities((prev) => [...prev, { ...clean, id: Date.now(), paidMonths: {} }]);
+        setShowLibForm(false);
+        setEditingLibId(null);
+    };
+    const deleteLib = (id) => setLiabilities((prev) => prev.filter((l) => l.id !== id));
+    const addSched = () => setLibForm((f) => {
+        const last = f.schedule.length ? idxOf(f.schedule[f.schedule.length - 1].month) : CURRENT_IDX - 1;
+        const next = Math.min(MONTH_KEYS.length - 1, Math.max(0, last + 1));
+        return { ...f, schedule: [...f.schedule, { month: MONTH_KEYS[next], amount: "" }] };
+    });
+    const updSched = (i, patch) => setLibForm((f) => ({ ...f, schedule: f.schedule.map((s, j) => (j === i ? { ...s, ...patch } : s)) }));
+    const rmSched = (i) => setLibForm((f) => ({ ...f, schedule: f.schedule.filter((_, j) => j !== i) }));
+    const addCategory = () => {
+        if (!catForm.label.trim())
+            return;
+        const cat = { key: "cat_" + Date.now(), label: catForm.label.trim(), icon: catForm.icon || "💵", color: catForm.color, hasNote: catForm.hasNote, region: catForm.region };
+        setCategories((prev) => [...prev, cat]);
+        setCatForm({ label: "", icon: "💵", color: COLOR_PALETTE[0], hasNote: false, region: catForm.region });
+        setShowCatForm(false);
+    };
+    const deleteCategory = (key) => {
+        setCategories((prev) => prev.filter((c) => c.key !== key));
+        setData((prev) => {
+            const next = {};
+            Object.keys(prev).forEach((k) => {
+                const m = prev[k] || {};
+                const { [key]: _a, ...e } = m.expenses || {};
+                const { [key]: _b, ...p } = m.paid || {};
+                const { [key]: _c, ...n } = m.notes || {};
+                next[k] = { ...m, expenses: e, paid: p, notes: n };
+            });
+            return next;
+        });
+        setPlan((p) => { const { [key]: _d, ...e } = p.expenses || {}; return { ...p, expenses: e }; });
+    };
+    const moveCategory = (idx, dir) => setCategories((prev) => {
+        const t = idx + dir;
+        if (t < 0 || t >= prev.length)
+            return prev;
+        const next = [...prev];
+        [next[idx], next[t]] = [next[t], next[idx]];
+        return next;
+    });
+    const setCatField = (key, patch) => setCategories((prev) => prev.map((c) => (c.key === key ? { ...c, ...patch } : c)));
+    const setCatRegion = (key, region) => setCategories((prev) => prev.map((c) => (c.key === key ? { ...c, region } : c)));
+    const copyBackup = async () => {
+        try {
+            await navigator.clipboard.writeText(backupJSON);
+            setBackupMsg("Copied. Paste it into Notes or email it to yourself.");
+        }
+        catch (e) {
+            setBackupMsg("Tap the text box, select all, and copy it manually.");
+        }
+        setTimeout(() => setBackupMsg(""), 3500);
+    };
+    const applyImport = () => {
+        try {
+            applySnapshot(JSON.parse(importText));
+            setImportText("");
+            setBackupMsg("Restored.");
+            setTimeout(() => { setBackupMsg(""); setShowBackup(false); }, 1200);
+        }
+        catch (e) {
+            setBackupMsg("That text is not a valid backup. Copy the whole backup and try again.");
+            setTimeout(() => setBackupMsg(""), 3500);
+        }
+    };
+    const goMonth = (i) => { var _e; setActiveMonthIdx(i); setView("month"); (_e = window.scrollTo) === null || _e === void 0 ? void 0 : _e.call(window, 0, 0); };
+    const libFormJSX = (React.createElement("div", { style: { background: "rgba(155,127,232,0.07)", border: "1px solid rgba(155,127,232,0.35)", borderRadius: 12, padding: 14, marginBottom: 14 } },
+        React.createElement("div", { style: { fontSize: 14, fontWeight: 800, color: C.purple, marginBottom: 10 } }, editingLibId !== null ? "Edit installment" : "New installment"),
+        React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10, marginBottom: 12 } },
+            React.createElement("div", null,
+                React.createElement("div", { style: fieldLbl }, "Name"),
+                React.createElement("input", { type: "text", value: libForm.name, onChange: (e) => setLibForm((f) => ({ ...f, name: e.target.value })), placeholder: "e.g. MLS school fees", style: inputStyle })),
+            React.createElement("div", null,
+                React.createElement("div", { style: fieldLbl }, "Region"),
+                React.createElement("select", { value: libForm.region, onChange: (e) => setLibForm((f) => ({ ...f, region: e.target.value })), style: selectStyle }, REGIONS.map((r) => React.createElement("option", { key: r.id, value: r.id },
+                    r.flag,
+                    " ",
+                    r.label)))),
+            React.createElement("div", null,
+                React.createElement("div", { style: fieldLbl }, "How often"),
+                React.createElement("select", { value: libForm.frequency, onChange: (e) => setLibForm((f) => ({ ...f, frequency: e.target.value, schedule: e.target.value === "custom" && f.schedule.length === 0 ? [{ month: MONTH_KEYS[Math.max(0, CURRENT_IDX)], amount: "" }] : f.schedule })), style: selectStyle },
+                    React.createElement("option", { value: "monthly" }, "Monthly"),
+                    React.createElement("option", { value: "quarterly" }, "Quarterly (every 3 months)"),
+                    React.createElement("option", { value: "annual" }, "Annual (once a year)"),
+                    React.createElement("option", { value: "custom" }, "Custom dates and amounts")))),
+        libForm.frequency !== "custom" ? (React.createElement("div", { style: { marginBottom: 12 } },
+            React.createElement("div", { style: { maxWidth: 440, marginBottom: 10 } },
+                React.createElement("div", { style: fieldLbl }, "Amount per payment"),
+                React.createElement(DualInput, { value: libForm.amountSAR, onChange: (v) => setLibForm((f) => ({ ...f, amountSAR: v })), rate: egpRate, color: C.purple })),
+            React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, maxWidth: 440 } },
+                React.createElement("div", null,
+                    React.createElement("div", { style: fieldLbl }, "First payment"),
+                    React.createElement("select", { value: libForm.startMonth, onChange: (e) => setLibForm((f) => ({ ...f, startMonth: e.target.value })), style: selectStyle }, ALL_MONTHS.map((m) => React.createElement("option", { key: m.key, value: m.key }, m.label)))),
+                React.createElement("div", null,
+                    React.createElement("div", { style: fieldLbl }, "Last payment"),
+                    React.createElement("select", { value: libForm.endMonth, onChange: (e) => setLibForm((f) => ({ ...f, endMonth: e.target.value })), style: selectStyle }, ALL_MONTHS.map((m) => React.createElement("option", { key: m.key, value: m.key }, m.label))))))) : (React.createElement("div", { style: { marginBottom: 12 } },
+            React.createElement("div", { style: { fontSize: 12, color: C.sub, marginBottom: 10 } }, "Add each payment with its month and amount, for example registration, term 1, term 2, books and bus."),
+            libForm.schedule.map((s, i) => (React.createElement("div", { key: i, style: { display: "flex", gap: 8, alignItems: "flex-end", marginBottom: 10, flexWrap: "wrap" } },
+                React.createElement("div", { style: { width: 140 } },
+                    React.createElement("div", { style: fieldLbl }, "Month"),
+                    React.createElement("select", { value: s.month, onChange: (e) => updSched(i, { month: e.target.value }), style: selectStyle }, ALL_MONTHS.map((m) => React.createElement("option", { key: m.key, value: m.key }, m.label)))),
+                React.createElement("div", { style: { flex: "1 1 240px", minWidth: 0 } },
+                    React.createElement(DualInput, { value: s.amount, onChange: (v) => updSched(i, { amount: v }), rate: egpRate, color: C.purple })),
+                React.createElement("button", { onClick: () => rmSched(i), style: { ...btn(C.red), padding: "8px 11px" } }, "\u2715")))),
+            React.createElement("button", { onClick: addSched, style: btn(C.purple) }, "+ Add payment"),
+            libForm.schedule.length > 0 && (React.createElement("div", { style: { fontSize: 13, color: C.sub, marginTop: 10 } },
+                "Total: ",
+                React.createElement("b", { style: { color: C.purple } }, fmt(libForm.schedule.reduce((t, s) => t + num(s.amount), 0))),
+                ", EGP ",
+                r0(libForm.schedule.reduce((t, s) => t + num(s.amount), 0) * egpRate))))),
+        React.createElement("div", { style: { display: "flex", gap: 8 } },
+            React.createElement("button", { onClick: saveLib, disabled: !libFormValid, style: { ...btn(C.purple, true), opacity: libFormValid ? 1 : 0.4, cursor: libFormValid ? "pointer" : "default" } }, editingLibId !== null ? "Save changes" : "Add installment"),
+            React.createElement("button", { onClick: () => { setShowLibForm(false); setEditingLibId(null); }, style: btn(C.sub) }, "Cancel"))));
+    if (loading) {
+        return (React.createElement("div", { style: { fontFamily: "'DM Sans','Segoe UI',system-ui,sans-serif", background: "#0f1624", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", color: C.blue, fontSize: 14, fontWeight: 600 } }, "Opening your budget..."));
+    }
+    return (React.createElement("div", { style: { fontFamily: "'DM Sans','Segoe UI',system-ui,sans-serif", background: "linear-gradient(135deg,#0d1117 0%,#111827 60%,#0d1b2a 100%)", minHeight: "100vh", color: C.text, paddingBottom: 60 } },
+        React.createElement("div", { style: { position: "sticky", top: 0, zIndex: 50, background: "linear-gradient(90deg,#1a2235,#1e2d3d)", borderBottom: `1px solid ${C.line}`, padding: "14px 20px 0" } },
+            React.createElement("div", { style: { maxWidth: 1100, margin: "0 auto" } },
+                React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 10 } },
+                    React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 10 } },
+                        React.createElement("button", { onClick: onHome, style: btn(C.sub), "aria-label": "Back to home" }, "\u25C0 Home"),
+                        React.createElement("div", null,
+                            React.createElement("div", { style: { fontSize: 19, fontWeight: 800, color: C.head } }, "Budget Planner"),
+                            React.createElement("div", { style: { fontSize: 11, color: saveError ? C.red : C.sub } },
+                                "Jun 2026 - May 2030, ",
+                                saveLabel))),
+                    React.createElement("div", { style: { display: "flex", gap: 8, alignItems: "center" } },
+                        React.createElement("button", { onClick: () => setView("forecast"), style: { ...badge(tone), fontSize: 12, padding: "6px 10px", cursor: "pointer", fontFamily: "inherit" } },
+                            firstNeg || firstLow ? "⚠ " : "✓ ",
+                            statusShort),
+                        React.createElement("button", { onClick: () => { setShowBackup(true); setBackupTab("export"); setBackupMsg(""); }, style: btn(C.blue) }, "\uD83D\uDCBE Backup"))),
+                React.createElement("div", { style: { display: "flex", gap: 4 } }, [["forecast", "📈 Forecast"], ["month", "🗓️ This Month"], ["plan", "⚙️ Plan"]].map(([v, l]) => (React.createElement("button", { key: v, onClick: () => setView(v), style: { background: view === v ? "rgba(100,181,246,0.15)" : "transparent", border: "none", borderBottom: view === v ? `2px solid ${C.blue}` : "2px solid transparent", color: view === v ? C.blue : "#7a8aaa", padding: "8px 14px", cursor: "pointer", fontSize: 13, fontWeight: 700, fontFamily: "inherit" } }, l)))))),
+        banner ? React.createElement("div", { style: { maxWidth: 1100, margin: "0 auto", padding: "16px 20px 0" } }, banner) : null,
+        showBackup && (React.createElement("div", { onClick: () => setShowBackup(false), style: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 } },
+            React.createElement("div", { onClick: (e) => e.stopPropagation(), style: { background: "#141b2a", border: `1px solid ${C.line}`, borderRadius: 16, padding: 22, width: "100%", maxWidth: 560, maxHeight: "85vh", overflowY: "auto" } },
+                React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 } },
+                    React.createElement("div", { style: { fontSize: 16, fontWeight: 800, color: C.head } }, "Backup and restore"),
+                    React.createElement("button", { onClick: () => setShowBackup(false), style: { background: "transparent", border: "none", color: C.sub, fontSize: 20, cursor: "pointer" } }, "\u2715")),
+                React.createElement("div", { style: { display: "flex", gap: 4, marginBottom: 14, borderBottom: `1px solid ${C.line}` } }, [["export", "Copy backup"], ["import", "Restore"]].map(([t, l]) => (React.createElement("button", { key: t, onClick: () => { setBackupTab(t); setBackupMsg(""); }, style: { background: "transparent", border: "none", borderBottom: backupTab === t ? `2px solid ${C.blue}` : "2px solid transparent", color: backupTab === t ? C.blue : C.sub, padding: "8px 14px", cursor: "pointer", fontSize: 13, fontWeight: 700, fontFamily: "inherit" } }, l)))),
+                backupTab === "export" ? (React.createElement("div", null,
+                    React.createElement("div", { style: { fontSize: 13, color: C.sub, marginBottom: 12, lineHeight: 1.5 } }, "Copy this text and keep it somewhere safe, like Notes or an email to yourself. Paste it into Restore to bring everything back."),
+                    React.createElement("button", { onClick: copyBackup, style: { ...btn(C.blue, true), width: "100%", padding: "11px", marginBottom: 12 } }, "Copy backup text"),
+                    React.createElement("textarea", { readOnly: true, value: backupJSON, onFocus: (e) => e.target.select(), style: { ...inputStyle, height: 150, fontSize: 10, color: C.sub, fontFamily: "monospace", resize: "vertical" } }))) : (React.createElement("div", null,
+                    React.createElement("div", { style: { fontSize: 13, color: C.sub, marginBottom: 12, lineHeight: 1.5 } },
+                        "Paste your backup text and tap Restore. ",
+                        React.createElement("b", { style: { color: C.red } }, "This replaces everything currently in the tool.")),
+                    React.createElement("textarea", { value: importText, onChange: (e) => setImportText(e.target.value), placeholder: "Paste backup text here", style: { ...inputStyle, height: 150, fontSize: 11, fontFamily: "monospace", resize: "vertical", marginBottom: 12 } }),
+                    React.createElement("button", { onClick: applyImport, disabled: !importText.trim(), style: { ...btn(C.purple, true), width: "100%", padding: "11px", opacity: importText.trim() ? 1 : 0.4 } }, "Restore"))),
+                backupMsg && React.createElement("div", { style: { marginTop: 12, fontSize: 13, color: backupMsg.startsWith("That") ? C.red : C.green, textAlign: "center", fontWeight: 600 } }, backupMsg)))),
+        React.createElement("div", { style: { padding: 20, maxWidth: 1100, margin: "0 auto" } },
+            view === "forecast" && (React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 16 } },
+                React.createElement("div", { style: { background: `${tone}14`, border: `1px solid ${tone}55`, borderRadius: 16, padding: 22 } },
+                    React.createElement("div", { style: { fontSize: 13, fontWeight: 700, color: tone } }, firstNeg ? "Action needed" : firstLow ? "Watch out" : "All clear"),
+                    React.createElement("div", { style: { fontSize: 24, fontWeight: 800, color: C.head, marginTop: 6, lineHeight: 1.25, maxWidth: 720 } }, firstNeg
+                        ? `Your money runs out in ${firstNeg.label}.`
+                        : firstLow
+                            ? `Your balance drops below your safety buffer in ${firstLow.label}.`
+                            : `You stay above ${bufferV > 0 ? "your safety buffer" : "zero"} all the way to May 2030.`),
+                    React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 16, marginTop: 18 } },
+                        React.createElement("div", null,
+                            React.createElement(Label, null,
+                                "Lowest point, ",
+                                minRow.label),
+                            React.createElement("div", { style: { marginTop: 4 } },
+                                React.createElement(Tri, { v: minRow.balance, rates: rates, color: balColor(minRow.balance), size: 19 }))),
+                        React.createElement("div", null,
+                            React.createElement(Label, null, "End of plan, May 2030"),
+                            React.createElement("div", { style: { marginTop: 4 } },
+                                React.createElement(Tri, { v: endRow.balance, rates: rates, color: balColor(endRow.balance), size: 19 }))),
+                        cause && (React.createElement("div", null,
+                            React.createElement(Label, null, "Biggest pressure"),
+                            React.createElement("div", { style: { marginTop: 4, fontSize: 16, fontWeight: 700, color: C.purple } }, cause.lib.name),
+                            React.createElement("div", { style: { fontSize: 11, color: C.sub } },
+                                fmt(cause.amt),
+                                " due in ",
+                                causeRow.label)))),
+                    problem && shortfall > 0 && (React.createElement("div", { style: { marginTop: 18, padding: "12px 14px", background: "rgba(0,0,0,0.22)", borderRadius: 10, fontSize: 14, color: C.text, lineHeight: 1.6, maxWidth: 760 } },
+                        React.createElement("b", { style: { color: tone } }, "How to fix it: "),
+                        "you are short about ",
+                        React.createElement("b", null, fmt(shortfall)),
+                        ". Putting aside roughly ",
+                        React.createElement("b", null,
+                            fmt(perMonth),
+                            " more each month"),
+                        " from ",
+                        ALL_MONTHS[CURRENT_IDX].label,
+                        " until ",
+                        problem.label,
+                        " closes the gap. You can also lower your normal spending in Plan, or split or move ",
+                        cause ? cause.lib.name : "the big installment",
+                        " to a later date and check the result here.")),
+                    planMissing && (React.createElement("div", { style: { marginTop: 14, padding: "12px 14px", background: "rgba(232,168,56,0.1)", border: "1px solid rgba(232,168,56,0.35)", borderRadius: 10, fontSize: 13, color: C.text, lineHeight: 1.5, display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" } },
+                        React.createElement("span", { style: { flex: "1 1 300px" } }, "Your normal month is not set up yet, so future months count as zero salary and zero spending. Fill it in once and the forecast becomes real."),
+                        React.createElement("button", { onClick: () => setView("plan"), style: btn(C.amber) }, "Set up my plan")))),
+                React.createElement("div", null,
+                    React.createElement("div", { style: { fontSize: 15, fontWeight: 800, color: C.head, marginBottom: 10 } }, "Next 3 months"),
+                    React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 } }, next3.map((r) => (React.createElement(Card, { key: r.key, onClick: () => goMonth(r.i), style: { cursor: "pointer", borderColor: r.balance < 0 ? `${C.red}77` : r.balance < bufferV ? `${C.amber}77` : C.line } },
+                        React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 } },
+                            React.createElement("div", { style: { fontSize: 15, fontWeight: 700, color: C.head } }, r.label),
+                            React.createElement(Tag, { actual: r.actual })),
+                        React.createElement(MiniRow, { label: "Salary", value: r.income, color: C.green }),
+                        React.createElement(MiniRow, { label: "Spending", value: r.expenses, color: C.red }),
+                        React.createElement(MiniRow, { label: "Installments", value: r.inst, color: C.purple }),
+                        r.libs.length > 0 && (React.createElement("div", { style: { fontSize: 11, color: C.sub, marginTop: 2 } },
+                            r.libs.slice(0, 2).map((x) => x.lib.name).join(", "),
+                            r.libs.length > 2 ? ` and ${r.libs.length - 2} more` : "")),
+                        React.createElement("div", { style: { borderTop: `1px solid ${C.line}`, marginTop: 8, paddingTop: 8 } },
+                            React.createElement(Label, null, "Balance at month end"),
+                            React.createElement("div", { style: { marginTop: 2 } },
+                                React.createElement(Tri, { v: r.balance, rates: rates, color: balColor(r.balance), size: 16 })))))))),
+                React.createElement(Card, null,
+                    React.createElement("div", { style: { fontSize: 15, fontWeight: 800, color: C.head } }, "Your balance, month by month"),
+                    React.createElement("div", { style: { fontSize: 12, color: C.sub, margin: "4px 0 12px", maxWidth: 700 } },
+                        "The line is the money you hold at the end of each month. Bars show what each month adds or takes away. The red line is zero",
+                        bufferV > 0 ? ", the dashed amber line is your safety buffer" : "",
+                        "."),
+                    React.createElement(BalanceChart, { data: chartData, buffer: bufferV, nowIdx: CURRENT_IDX })),
+                React.createElement(Card, null,
+                    React.createElement("div", { style: { fontSize: 15, fontWeight: 800, color: C.head } }, "Months that cost more than they bring in"),
+                    React.createElement("div", { style: { fontSize: 12, color: C.sub, margin: "4px 0 10px" } }, "From now on, usually because an installment falls due. Tap a month to open it."),
+                    pressure.length === 0 ? (React.createElement("div", { style: { fontSize: 13, color: C.green } }, "None. Every month from now on covers itself.")) : (pressure.slice(0, 12).map((r) => (React.createElement("div", { key: r.key, onClick: () => goMonth(r.i), style: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, padding: "10px 0", borderBottom: "1px solid #1e2a38", cursor: "pointer" } },
+                        React.createElement("div", { style: { minWidth: 0 } },
+                            React.createElement("div", { style: { fontSize: 14, fontWeight: 700, color: C.head } }, r.label),
+                            React.createElement("div", { style: { fontSize: 11, color: C.sub, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, r.libs.length ? r.libs.slice(0, 3).map((x) => `${x.lib.name} ${r0(x.amt)}`).join(", ") : "Spending is above salary")),
+                        React.createElement("div", { style: { textAlign: "right", flexShrink: 0 } },
+                            React.createElement("div", { style: { fontSize: 14, fontWeight: 700, color: C.red } }, sfmt(r.flow)),
+                            React.createElement("div", { style: { fontSize: 11, color: balColor(r.balance) } },
+                                "balance ",
+                                fmt(r.balance))))))),
+                    pressure.length > 12 && React.createElement("div", { style: { fontSize: 12, color: C.sub, marginTop: 8 } },
+                        pressure.length - 12,
+                        " more in the full timeline below.")),
+                React.createElement(Card, { style: { padding: 0, overflow: "hidden" } },
+                    React.createElement("button", { onClick: () => setShowTimeline((s) => !s), style: { width: "100%", background: "transparent", border: "none", padding: "14px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", color: C.head, fontSize: 15, fontWeight: 800, cursor: "pointer", fontFamily: "inherit" } },
+                        React.createElement("span", null, "Full timeline, 48 months"),
+                        React.createElement("span", { style: { fontSize: 12, color: C.blue } }, showTimeline ? "Hide" : "Show")),
+                    showTimeline && (React.createElement("div", null,
+                        React.createElement("div", { style: { fontSize: 12, color: C.sub, padding: "0 16px 10px" } }, "Balance counts everything that is due, paid or not. Unpaid shows what you still have to settle."),
+                        React.createElement("div", { style: { overflowX: "auto" } },
+                            React.createElement("table", { style: { width: "100%", borderCollapse: "collapse", minWidth: 780 } },
+                                React.createElement("thead", null,
+                                    React.createElement("tr", { style: { background: "rgba(255,255,255,0.03)" } }, ["Month", "Salary", "Spending", "Installments", "Unpaid", "Month result", "Balance"].map((h) => React.createElement("th", { key: h, style: thStyle }, h)))),
+                                React.createElement("tbody", null,
+                                    React.createElement("tr", { style: { background: "rgba(62,201,214,0.05)" } },
+                                        React.createElement("td", { style: tdStyle },
+                                            React.createElement("b", { style: { color: C.teal } }, "\uD83D\uDC16 Starting savings")),
+                                        React.createElement("td", { colSpan: 5, style: { ...tdStyle, fontSize: 12, color: C.sub } }, "What you had before Jun 2026 (set in Plan)"),
+                                        React.createElement("td", { style: tdStyle },
+                                            React.createElement(Tri, { v: num(priorSavings), rates: rates, color: C.teal, size: 13 }))),
+                                    rows.map((r) => (React.createElement("tr", { key: r.key, onClick: () => goMonth(r.i), style: { borderTop: "1px solid #1e2a38", cursor: "pointer", background: r.balance < 0 ? "rgba(224,123,84,0.08)" : r.balance < bufferV ? "rgba(232,168,56,0.06)" : r.i === CURRENT_IDX ? "rgba(100,181,246,0.07)" : "transparent" } },
+                                        React.createElement("td", { style: tdStyle },
+                                            React.createElement("div", { style: { fontWeight: 700, color: C.head } }, r.label),
+                                            React.createElement("div", { style: { marginTop: 3 } },
+                                                React.createElement(Tag, { actual: r.actual }))),
+                                        React.createElement("td", { style: { ...tdStyle, color: C.green } }, fmt(r.income)),
+                                        React.createElement("td", { style: { ...tdStyle, color: C.red } }, fmt(r.expenses)),
+                                        React.createElement("td", { style: { ...tdStyle, color: C.purple } }, r.inst ? fmt(r.inst) : React.createElement("span", { style: { color: C.mute } }, "-")),
+                                        React.createElement("td", { style: tdStyle }, r.unpaid > 0.5
+                                            ? React.createElement("span", { style: { color: C.amber, fontWeight: 700 } }, fmt(r.unpaid))
+                                            : r.tracked && (r.inst > 0 || r.actual)
+                                                ? React.createElement("span", { style: { fontSize: 12, color: C.green } }, "all paid \u2713")
+                                                : React.createElement("span", { style: { color: C.mute } }, "-")),
+                                        React.createElement("td", { style: { ...tdStyle, fontWeight: 700, color: r.flow >= 0 ? C.green : C.red } }, sfmt(r.flow)),
+                                        React.createElement("td", { style: tdStyle },
+                                            React.createElement(Tri, { v: r.balance, rates: rates, color: balColor(r.balance), size: 13 }))))))))))))),
+            view === "month" && (React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 16 } },
+                React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" } },
+                    React.createElement("button", { onClick: () => setActiveMonthIdx((i) => Math.max(0, i - 1)), style: btn(C.sub) }, "\u25C0"),
+                    React.createElement("select", { value: activeMonthIdx, onChange: (e) => setActiveMonthIdx(Number(e.target.value)), style: { ...selectStyle, width: "auto", minWidth: 150, fontSize: 15, fontWeight: 700, color: "#90caf9" } }, ALL_MONTHS.map((m, i) => React.createElement("option", { key: m.key, value: i },
+                        m.label,
+                        i === CURRENT_IDX ? " (now)" : ""))),
+                    React.createElement("button", { onClick: () => setActiveMonthIdx((i) => Math.min(MONTH_KEYS.length - 1, i + 1)), style: btn(C.sub) }, "\u25B6"),
+                    activeMonthIdx !== CURRENT_IDX && React.createElement("button", { onClick: () => setActiveMonthIdx(CURRENT_IDX), style: btn(C.blue) }, "Go to now")),
+                React.createElement("div", { style: { background: "linear-gradient(135deg, rgba(30,58,95,0.35), rgba(26,34,53,0.5))", border: `1px solid ${C.line}`, borderRadius: 16, padding: 18 } },
+                    React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(270px, 1fr))", gap: 22 } },
+                        React.createElement("div", null,
+                            React.createElement(Label, { color: C.green, style: { marginBottom: 8 } }, "\uD83D\uDCB0 Salary this month"),
+                            React.createElement(DualInput, { value: md.income, onChange: (v) => setMonth((m) => ({ ...m, income: v })), rate: egpRate, color: C.green, hint: plan.income, big: true }),
+                            React.createElement("div", { style: { marginTop: 12, padding: "10px 12px", background: "rgba(155,127,232,0.1)", border: "1px solid rgba(155,127,232,0.3)", borderRadius: 10 } },
+                                React.createElement(Label, { color: C.purple }, "\uD83C\uDFE6 Installments due this month"),
+                                React.createElement("div", { style: { fontSize: 19, fontWeight: 800, color: C.purple, marginTop: 2 } }, fmt(row.inst)),
+                                React.createElement("div", { style: { fontSize: 11, color: C.sub } },
+                                    row.libs.length,
+                                    " payment",
+                                    row.libs.length === 1 ? "" : "s")),
+                            React.createElement("div", { style: { marginTop: 10, padding: "10px 12px", background: "rgba(62,201,214,0.08)", border: "1px solid rgba(62,201,214,0.3)", borderRadius: 10 } },
+                                React.createElement(Label, { color: C.teal }, "Your balance after this month"),
+                                React.createElement("div", { style: { marginTop: 2 } },
+                                    React.createElement(Tri, { v: row.balance, rates: rates, color: balColor(row.balance), size: 18 })))),
+                        React.createElement("div", null,
+                            React.createElement(Label, { color: C.blue, style: { marginBottom: 10 } }, "Where the salary goes"),
+                            (() => {
+                                const denom = Math.max(effIncome, allocated);
+                                if (denom <= 0)
+                                    return null;
+                                const segs = [
+                                    ...regionStats.map((r) => ({ c: r.color, v: r.total, t: r.label })),
+                                    { c: C.teal, v: monthSavings, t: "Savings" },
+                                    { c: "#2a3348", v: Math.max(0, left), t: "Left over" },
+                                ];
+                                return (React.createElement("div", { style: { display: "flex", height: 16, borderRadius: 6, overflow: "hidden", background: "#1a2235", marginBottom: 12 } }, segs.filter((s) => s.v > 0).map((s, i) => React.createElement("div", { key: i, title: `${s.t}: ${fmt(s.v)}`, style: { width: `${(s.v / denom) * 100}%`, background: s.c } }))));
+                            })(),
+                            [
+                                ...regionStats.map((r) => ({ k: r.id, l: `${r.flag} ${r.label}`, sub: r.inst > 0 ? `includes ${fmt(r.inst)} installments` : null, v: r.total, c: r.color })),
+                                { k: "sav", l: "🐖 Savings transfer", sub: null, v: monthSavings, c: C.teal },
+                                { k: "left", l: left >= 0 ? "Left over" : "Over budget", sub: null, v: left, c: left >= 0 ? C.green : C.red },
+                            ].map((x) => (React.createElement("div", { key: x.k, style: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "7px 0", borderBottom: "1px solid #1e2a38" } },
+                                React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } },
+                                    React.createElement("span", { style: { width: 9, height: 9, borderRadius: 2, background: x.c, display: "inline-block" } }),
+                                    React.createElement("div", null,
+                                        React.createElement("div", { style: { fontSize: 13, color: C.text } }, x.l),
+                                        x.sub && React.createElement("div", { style: { fontSize: 11, color: C.sub } }, x.sub))),
+                                React.createElement("div", { style: { textAlign: "right" } },
+                                    React.createElement("span", { style: { fontSize: 14, fontWeight: 700, color: x.c } }, fmt(x.v)),
+                                    effIncome > 0 && React.createElement("span", { style: { fontSize: 11, color: C.sub, marginLeft: 6 } },
+                                        Math.round((x.v / effIncome) * 100),
+                                        "%"))))),
+                            React.createElement("div", { style: { fontSize: 11, color: C.mute, marginTop: 8 } }, "Empty fields use your Plan amounts, shown in grey inside each box.")))),
+                regionStats.filter((r) => r.cats.length > 0 || r.libs.length > 0).map((r) => (React.createElement("div", { key: r.id, style: { background: r.tint, border: `1px solid ${r.border}`, borderRadius: 14, padding: 16 } },
+                    React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, paddingBottom: 10, borderBottom: `1px solid ${r.border}` } },
+                        React.createElement("div", { style: { fontSize: 16, fontWeight: 800, color: r.color } },
+                            r.flag,
+                            " ",
+                            r.label),
+                        React.createElement("div", { style: { textAlign: "right" } },
+                            React.createElement("div", { style: { fontSize: 17, fontWeight: 800, color: r.color } }, fmt(r.total)),
+                            React.createElement("div", { style: { fontSize: 11, color: C.sub } },
+                                "EGP ",
+                                r0(r.total * egpRate),
+                                effIncome > 0 ? `, ${Math.round((r.total / effIncome) * 100)}% of salary` : ""))),
+                    r.libs.length > 0 && (React.createElement("div", { style: { marginBottom: 12 } },
+                        React.createElement(Label, { color: C.purple, style: { marginBottom: 6 } }, "\uD83C\uDFE6 Installments due"),
+                        r.libs.map(({ lib, amt }) => {
+                            var _e;
+                            const p = !!((_e = lib.paidMonths) === null || _e === void 0 ? void 0 : _e[mk]);
+                            return (React.createElement("div", { key: lib.id, style: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, padding: "8px 12px", marginBottom: 6, background: C.card, borderRadius: 9, border: `1px solid ${p ? "rgba(86,201,123,0.3)" : "rgba(155,127,232,0.25)"}` } },
+                                React.createElement("label", { style: { display: "flex", alignItems: "center", gap: 10, cursor: "pointer", minWidth: 0 } },
+                                    React.createElement("input", { type: "checkbox", checked: p, onChange: () => toggleLibPaid(lib.id, mk), style: { width: 16, height: 16, accentColor: C.green, cursor: "pointer" } }),
+                                    React.createElement("span", { style: { fontSize: 13, color: p ? C.green : C.text, textDecoration: p ? "line-through" : "none" } }, lib.name)),
+                                React.createElement("span", { style: { fontSize: 13, fontWeight: 700, color: p ? C.green : C.purple, whiteSpace: "nowrap" } },
+                                    fmt(amt),
+                                    " ",
+                                    React.createElement("span", { style: { fontSize: 11, color: C.sub, fontWeight: 400 } }, p ? "paid" : "due"))));
+                        }))),
+                    r.cats.length > 0 && (React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 10 } }, r.cats.map((c) => {
+                        var _e, _f, _g, _h;
+                        const isPaid = !!((_e = md.paid) === null || _e === void 0 ? void 0 : _e[c.key]);
+                        return (React.createElement("div", { key: c.key, style: { background: isPaid ? "rgba(86,201,123,0.05)" : C.card, border: `1px solid ${isPaid ? "rgba(86,201,123,0.3)" : "#22304a"}`, borderLeft: `3px solid ${isPaid ? C.green : c.color}`, borderRadius: 12, padding: "11px 13px" } },
+                            React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, gap: 6 } },
+                                React.createElement("span", { style: { fontSize: 13, color: isPaid ? C.green : C.text } },
+                                    c.icon,
+                                    " ",
+                                    c.label),
+                                React.createElement(Tick, { checked: isPaid, onChange: () => togglePaid(c.key) })),
+                            React.createElement(DualInput, { value: (_f = md.expenses) === null || _f === void 0 ? void 0 : _f[c.key], onChange: (v) => setExp(c.key, v), rate: egpRate, color: c.color, hint: (_g = plan.expenses) === null || _g === void 0 ? void 0 : _g[c.key] }),
+                            c.hasNote && (React.createElement("textarea", { value: ((_h = md.notes) === null || _h === void 0 ? void 0 : _h[c.key]) || "", onChange: (e) => setNote(c.key, e.target.value), placeholder: "What was this for?", rows: 2, style: { ...inputStyle, marginTop: 8, fontSize: 12, resize: "vertical", minHeight: 40, background: "rgba(143,163,191,0.06)" } }))));
+                    })))))),
+                React.createElement("div", { style: { background: "rgba(62,201,214,0.06)", border: "1px solid rgba(62,201,214,0.3)", borderRadius: 14, padding: 16 } },
+                    React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, marginBottom: 10 } },
+                        React.createElement("div", null,
+                            React.createElement("div", { style: { fontSize: 16, fontWeight: 800, color: C.teal } }, "\uD83D\uDC16 Savings transfer"),
+                            React.createElement("div", { style: { fontSize: 12, color: C.sub, marginTop: 2, maxWidth: 520 } }, "Money you move to your savings account. It stays yours, so it does not lower your forecast balance.")),
+                        React.createElement(Tick, { checked: md.savingsPaid, onChange: () => setMonth((m) => ({ ...m, savingsPaid: !m.savingsPaid })), on: "Done", off: "Mark done", color: C.teal })),
+                    React.createElement("div", { style: { maxWidth: 420 } },
+                        React.createElement(DualInput, { value: md.savings, onChange: (v) => setMonth((m) => ({ ...m, savings: v })), rate: egpRate, color: C.teal }))),
+                React.createElement("div", null,
+                    React.createElement("button", { onClick: () => askDelete(`month:${mk}`, resetMonth), style: btn(C.red) }, pendingDelete === `month:${mk}` ? `Tap again to clear ${ALL_MONTHS[activeMonthIdx].label}` : "Clear this month's spending")))),
+            view === "plan" && (React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 16 } },
+                React.createElement(Card, null,
+                    React.createElement(SectionTitle, { n: "1", title: "Starting point", sub: "What you have today, and how low you are willing to let your balance go." }),
+                    React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 18 } },
+                        React.createElement("div", null,
+                            React.createElement(Label, { style: { marginBottom: 6 } }, "\uD83D\uDC16 Savings before Jun 2026"),
+                            React.createElement(DualInput, { value: priorSavings, onChange: setPriorSavings, rate: egpRate, color: C.teal })),
+                        React.createElement("div", null,
+                            React.createElement(Label, { style: { marginBottom: 6 } }, "\uD83D\uDEDF Safety buffer"),
+                            React.createElement(DualInput, { value: buffer, onChange: setBuffer, rate: egpRate, color: C.amber }),
+                            React.createElement("div", { style: { fontSize: 11, color: C.sub, marginTop: 5 } }, "You get a warning when the forecast drops below this. Leave it empty to warn only below zero.")),
+                        React.createElement("div", null,
+                            React.createElement(Label, { style: { marginBottom: 6 } }, "\uD83D\uDCB1 Exchange rates"),
+                            React.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap" } },
+                                React.createElement(RateBox, { label: "EGP", value: sarToEgp, onChange: setSarToEgp, color: C.amber }),
+                                React.createElement(RateBox, { label: "USD", value: sarToUsd, onChange: setSarToUsd, color: C.green }))))),
+                React.createElement(Card, null,
+                    React.createElement(SectionTitle, { n: "2", title: "A normal month", sub: "Your usual salary and spending. The forecast uses these for every future month you have not filled in yet. Big dated payments like school fees belong in step 3, not here." }),
+                    React.createElement("div", { style: { maxWidth: 440, marginBottom: 16 } },
+                        React.createElement(Label, { color: C.green, style: { marginBottom: 6 } }, "\uD83D\uDCB0 Monthly salary"),
+                        React.createElement(DualInput, { value: plan.income, onChange: (v) => setPlan((p) => ({ ...p, income: v })), rate: egpRate, color: C.green, big: true })),
+                    REGIONS.map((r) => {
+                        const cats = categories.filter((c) => regionOf(c) === r.id);
+                        if (!cats.length)
+                            return null;
+                        const sub = cats.reduce((t, c) => { var _e; return t + num((_e = plan.expenses) === null || _e === void 0 ? void 0 : _e[c.key]); }, 0);
+                        return (React.createElement("div", { key: r.id, style: { background: r.tint, border: `1px solid ${r.border}`, borderRadius: 12, padding: 14, marginBottom: 12 } },
+                            React.createElement("div", { style: { display: "flex", justifyContent: "space-between", marginBottom: 10 } },
+                                React.createElement("div", { style: { fontWeight: 800, color: r.color } },
+                                    r.flag,
+                                    " ",
+                                    r.label),
+                                React.createElement("div", { style: { fontWeight: 800, color: r.color } }, fmt(sub))),
+                            React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 12 } }, cats.map((c) => {
+                                var _e;
+                                return (React.createElement("div", { key: c.key },
+                                    React.createElement("div", { style: { fontSize: 13, color: C.text, marginBottom: 4 } },
+                                        c.icon,
+                                        " ",
+                                        c.label),
+                                    React.createElement(DualInput, { value: (_e = plan.expenses) === null || _e === void 0 ? void 0 : _e[c.key], onChange: (v) => setPlanExp(c.key, v), rate: egpRate, color: c.color })));
+                            }))));
+                    }),
+                    React.createElement("div", { style: { background: "rgba(0,0,0,0.2)", borderRadius: 12, padding: 14, maxWidth: 520 } },
+                        React.createElement(MiniRow, { label: "Salary", value: num(plan.income), color: C.green }),
+                        React.createElement(MiniRow, { label: "Normal spending", value: planSpend, color: C.red }),
+                        React.createElement(MiniRow, { label: "Left before installments", value: planLeft, color: planLeft >= 0 ? C.text : C.red }),
+                        React.createElement(MiniRow, { label: "Installments, average per month from now", value: avgInst, color: C.purple }),
+                        React.createElement("div", { style: { display: "flex", justifyContent: "space-between", borderTop: `1px solid ${C.line}`, marginTop: 6, paddingTop: 8 } },
+                            React.createElement("span", { style: { fontSize: 13, fontWeight: 700, color: C.head } }, "Typical monthly surplus"),
+                            React.createElement("span", { style: { fontSize: 15, fontWeight: 800, color: planLeft - avgInst >= 0 ? C.green : C.red } }, fmt(planLeft - avgInst))),
+                        planLeft - avgInst < 0 && React.createElement("div", { style: { fontSize: 12, color: C.red, marginTop: 6 } }, "On average you spend more than you earn, so your savings shrink every month."))),
+                React.createElement(Card, null,
+                    React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, flexWrap: "wrap" } },
+                        React.createElement(SectionTitle, { n: "3", title: "Installments and dated payments", sub: "Anything with a due date: Badya, the club, school fees. Choose Custom when the dates or amounts vary." }),
+                        !showLibForm && React.createElement("button", { onClick: openNewLib, style: btn(C.purple) }, "+ Add installment")),
+                    showLibForm && editingLibId === null && libFormJSX,
+                    liabilities.length === 0 && !showLibForm && (React.createElement("div", { style: { fontSize: 13, color: C.sub, padding: "10px 0" } }, "No installments yet. Add Badya, the club and school fees so the forecast can see them coming.")),
+                    React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 12 } }, liabilities.map((lib) => {
+                        const months = installmentMonths(lib);
+                        const total = months.reduce((t, k) => t + libAmountIn(lib, k), 0);
+                        const paid = months.reduce((t, k) => { var _e; return t + (((_e = lib.paidMonths) === null || _e === void 0 ? void 0 : _e[k]) ? libAmountIn(lib, k) : 0); }, 0);
+                        const pct = total > 0 ? (paid / total) * 100 : 0;
+                        const reg = REGIONS.find((r) => r.id === (lib.region || "saudi")) || REGIONS[0];
+                        const freq = lib.frequency || "monthly";
+                        const upcoming = months.find((k) => { var _e; return idxOf(k) >= CURRENT_IDX && !((_e = lib.paidMonths) === null || _e === void 0 ? void 0 : _e[k]); });
+                        const delId = `lib:${lib.id}`;
+                        if (showLibForm && editingLibId === lib.id)
+                            return React.createElement("div", { key: lib.id }, libFormJSX);
+                        return (React.createElement("div", { key: lib.id, style: { background: C.card, border: `1px solid ${C.line}`, borderLeft: `3px solid ${reg.color}`, borderRadius: 12, padding: 14 } },
+                            React.createElement("div", { style: { display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", marginBottom: 10 } },
+                                React.createElement("div", { style: { minWidth: 0 } },
+                                    React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" } },
+                                        React.createElement("span", { style: { fontSize: 15, fontWeight: 700, color: C.head } }, lib.name),
+                                        React.createElement("span", { style: badge(C.purple) }, FREQ_LABEL[freq]),
+                                        React.createElement("span", null, reg.flag)),
+                                    React.createElement("div", { style: { fontSize: 12, color: C.sub, marginTop: 3 } },
+                                        freq === "custom" ? `${months.length} payments` : `${fmt(num(lib.amountSAR))} each, ${months.length} payments`,
+                                        upcoming ? `. Next: ${ALL_MONTHS[idxOf(upcoming)].label}, ${fmt(libAmountIn(lib, upcoming))}` : "")),
+                                React.createElement("div", { style: { display: "flex", gap: 6, alignItems: "flex-start" } },
+                                    React.createElement("button", { onClick: () => openEditLib(lib), style: btn(C.sub) }, "Edit"),
+                                    React.createElement("button", { onClick: () => askDelete(delId, () => deleteLib(lib.id)), style: btn(C.red) }, pendingDelete === delId ? "Tap again to delete" : "Delete"))),
+                            React.createElement("div", { style: { display: "flex", justifyContent: "space-between", fontSize: 12, color: C.sub, marginBottom: 5 } },
+                                React.createElement("span", null,
+                                    "Paid ",
+                                    fmt(paid),
+                                    " of ",
+                                    fmt(total)),
+                                React.createElement("span", { style: { color: C.amber } },
+                                    "Remaining ",
+                                    fmt(total - paid))),
+                            React.createElement("div", { style: { background: "#1a2235", borderRadius: 5, height: 6, overflow: "hidden", marginBottom: 10 } },
+                                React.createElement("div", { style: { height: "100%", width: `${pct}%`, background: `linear-gradient(90deg, ${C.purple}, ${C.green})` } })),
+                            React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 6 } }, months.map((k) => {
+                                var _e;
+                                const p = !!((_e = lib.paidMonths) === null || _e === void 0 ? void 0 : _e[k]);
+                                return (React.createElement("label", { key: k, style: { display: "flex", alignItems: "center", gap: 5, background: p ? "rgba(86,201,123,0.12)" : "rgba(255,255,255,0.04)", border: `1px solid ${p ? C.green : C.line}`, borderRadius: 8, padding: "4px 9px", cursor: "pointer" } },
+                                    React.createElement("input", { type: "checkbox", checked: p, onChange: () => toggleLibPaid(lib.id, k), style: { width: 13, height: 13, accentColor: C.green, cursor: "pointer" } }),
+                                    React.createElement("span", { style: { fontSize: 11, fontWeight: 600, color: p ? C.green : C.sub } },
+                                        ALL_MONTHS[idxOf(k)].short,
+                                        freq === "custom" ? `, ${r0(libAmountIn(lib, k))}` : "")));
+                            }))));
+                    }))),
+                React.createElement(Card, null,
+                    React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, flexWrap: "wrap" } },
+                        React.createElement(SectionTitle, { n: "4", title: "Expense fields", sub: "Rename fields, change their emoji, reorder or remove them, or move one between Saudi Arabia, Egypt and Other." }),
+                        !showCatForm && React.createElement("button", { onClick: () => setShowCatForm(true), style: btn(C.green) }, "+ Add field")),
+                    showCatForm && (React.createElement("div", { style: { background: "rgba(86,201,123,0.06)", border: "1px solid rgba(86,201,123,0.25)", borderRadius: 12, padding: 14, marginBottom: 14 } },
+                        React.createElement("div", { style: { display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-end" } },
+                            React.createElement("div", { style: { flex: "2 1 180px" } },
+                                React.createElement("div", { style: fieldLbl }, "Field name"),
+                                React.createElement("input", { type: "text", value: catForm.label, onChange: (e) => setCatForm((f) => ({ ...f, label: e.target.value })), placeholder: "e.g. Gym membership", style: inputStyle })),
+                            React.createElement("div", { style: { flex: "1 1 140px" } },
+                                React.createElement("div", { style: fieldLbl }, "Region"),
+                                React.createElement("select", { value: catForm.region, onChange: (e) => setCatForm((f) => ({ ...f, region: e.target.value })), style: selectStyle }, REGIONS.map((r) => React.createElement("option", { key: r.id, value: r.id },
+                                    r.flag,
+                                    " ",
+                                    r.label)))),
+                            React.createElement("div", { style: { flex: "0 0 80px" } },
+                                React.createElement("div", { style: fieldLbl }, "Emoji"),
+                                React.createElement("input", { type: "text", value: catForm.icon, onChange: (e) => setCatForm((f) => ({ ...f, icon: e.target.value })), style: { ...inputStyle, textAlign: "center", fontSize: 16 } })),
+                            React.createElement("div", { style: { flex: "1 1 160px" } },
+                                React.createElement("div", { style: fieldLbl }, "Color"),
+                                React.createElement("div", { style: { display: "flex", gap: 4, flexWrap: "wrap" } }, COLOR_PALETTE.map((col) => (React.createElement("button", { key: col, onClick: () => setCatForm((f) => ({ ...f, color: col })), style: { width: 20, height: 20, borderRadius: 5, background: col, border: catForm.color === col ? "2px solid #fff" : `1px solid ${C.line}`, cursor: "pointer", padding: 0 } }))))),
+                            React.createElement("label", { style: { display: "flex", alignItems: "center", gap: 6, cursor: "pointer", paddingBottom: 8 } },
+                                React.createElement("input", { type: "checkbox", checked: catForm.hasNote, onChange: (e) => setCatForm((f) => ({ ...f, hasNote: e.target.checked })), style: { width: 14, height: 14, accentColor: C.green } }),
+                                React.createElement("span", { style: { fontSize: 12, color: C.sub } }, "Notes box"))),
+                        React.createElement("div", { style: { display: "flex", gap: 8, marginTop: 12 } },
+                            React.createElement("button", { onClick: addCategory, style: btn(C.green, true) }, "Add field"),
+                            React.createElement("button", { onClick: () => setShowCatForm(false), style: btn(C.sub) }, "Cancel")))),
+                    React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 6 } }, categories.map((c, i) => {
+                        const delId = `cat:${c.key}`;
+                        return (React.createElement("div", { key: c.key, style: { display: "flex", alignItems: "center", gap: 8, background: C.card, border: "1px solid #22304a", borderLeft: `3px solid ${c.color}`, borderRadius: 10, padding: "8px 12px", flexWrap: "wrap" } },
+                            React.createElement("input", { type: "text", value: c.icon, onChange: (e) => setCatField(c.key, { icon: e.target.value }), style: { ...inputStyle, width: 64, textAlign: "center", fontSize: 15, padding: "5px 6px" } }),
+                            React.createElement("input", { type: "text", value: c.label, onChange: (e) => setCatField(c.key, { label: e.target.value }), style: { ...inputStyle, flex: "1 1 170px", width: "auto", padding: "6px 9px" } }),
+                            React.createElement("select", { value: regionOf(c), onChange: (e) => setCatRegion(c.key, e.target.value), style: { ...selectStyle, width: "auto", fontSize: 12, padding: "5px 8px" } }, REGIONS.map((r) => React.createElement("option", { key: r.id, value: r.id },
+                                r.flag,
+                                " ",
+                                r.label))),
+                            React.createElement("button", { onClick: () => moveCategory(i, -1), disabled: i === 0, style: arrowBtn(i === 0) }, "\u2191"),
+                            React.createElement("button", { onClick: () => moveCategory(i, 1), disabled: i === categories.length - 1, style: arrowBtn(i === categories.length - 1) }, "\u2193"),
+                            React.createElement("button", { onClick: () => askDelete(delId, () => deleteCategory(c.key)), style: { ...btn(C.red), padding: "5px 10px" } }, pendingDelete === delId ? "Sure?" : "✕")));
+                    })),
+                    React.createElement("div", { style: { fontSize: 11, color: C.mute, marginTop: 8 } }, "Deleting a field removes its amounts from every month.")))))));
+}
+/* ============ Balance chart (plain SVG, no chart library needed) ============ */
+const niceTicks = (min, max, count) => {
+    const raw = (max - min) / count;
+    const mag = Math.pow(10, Math.floor(Math.log10(raw || 1)));
+    const step = [1, 2, 2.5, 5, 10].map((m) => m * mag).find((st) => st >= raw) || raw;
+    const out = [];
+    for (let v = Math.ceil(min / step) * step; v <= max + 1e-9; v += step)
+        out.push(Math.round(v));
+    return out;
+};
+const kfmt = (v) => (Math.abs(v) >= 1000 ? `${Math.round(v / 1000)}k` : String(Math.round(v)));
+function BalanceChart({ data, buffer, nowIdx }) {
+    const n = data.length || 1;
+    const [hover, setHover] = useState(null);
+    const boxRef = useRef(null);
+    const [W, setW] = useState(760);
+    useEffect(() => {
+        const el = boxRef.current;
+        if (!el)
+            return undefined;
+        const measure = () => setW(Math.max(300, Math.round(el.clientWidth || 760)));
+        measure();
+        if (typeof ResizeObserver === "undefined") {
+            window.addEventListener("resize", measure);
+            return () => window.removeEventListener("resize", measure);
+        }
+        const ro = new ResizeObserver(measure);
+        ro.observe(el);
+        return () => ro.disconnect();
+    }, []);
+    const H = W < 520 ? 240 : 300;
+    const every = Math.max(1, Math.ceil(n / Math.floor(W / 58)));
+    const padL = 46;
+    const padR = 10;
+    const padT = 16;
+    const padB = 28;
+    const vals = data.flatMap((d) => [d.balance, d.flow]).concat([0, buffer || 0]);
+    let max = Math.max(...vals);
+    let min = Math.min(...vals);
+    if (max === min) {
+        max += 1000;
+        min -= 1000;
+    }
+    const span = max - min;
+    max += span * 0.06;
+    min -= span * 0.06;
+    const iw = W - padL - padR;
+    const ih = H - padT - padB;
+    const x = (i) => padL + ((i + 0.5) * iw) / n;
+    const y = (v) => padT + ((max - v) / (max - min)) * ih;
+    const bw = Math.max(2, (iw / n) * 0.62);
+    const ticks = niceTicks(min, max, 5);
+    const path = data.map((d, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(d.balance).toFixed(1)}`).join(" ");
+    const onMove = (e) => {
+        const r = e.currentTarget.getBoundingClientRect();
+        const px = ((e.clientX - r.left) / r.width) * W;
+        const i = Math.floor(((px - padL) / iw) * n);
+        setHover(i >= 0 && i < n ? i : null);
+    };
+    const h = hover !== null ? data[hover] : null;
+    return (React.createElement("div", { ref: boxRef, style: { position: "relative", width: "100%" } },
+        React.createElement("svg", { viewBox: `0 0 ${W} ${H}`, style: { width: "100%", height: "auto", display: "block", touchAction: "pan-y" }, onPointerMove: onMove, onPointerDown: onMove, onPointerLeave: () => setHover(null), role: "img", "aria-label": "Balance by month" },
+            ticks.map((t) => (React.createElement("g", { key: t },
+                React.createElement("line", { x1: padL, x2: W - padR, y1: y(t), y2: y(t), stroke: "#1e2a38", strokeDasharray: "3 3" }),
+                React.createElement("text", { x: padL - 6, y: y(t) + 3, fill: C.sub, fontSize: "10", textAnchor: "end" }, kfmt(t))))),
+            data.map((d, i) => {
+                const top = Math.min(y(0), y(d.flow));
+                const hgt = Math.max(1, Math.abs(y(0) - y(d.flow)));
+                return React.createElement("rect", { key: d.name, x: x(i) - bw / 2, y: top, width: bw, height: hgt, rx: "2", fill: d.flow >= 0 ? "rgba(86,201,123,0.45)" : "rgba(224,123,84,0.75)", opacity: hover === null || hover === i ? 1 : 0.55 });
+            }),
+            React.createElement("line", { x1: padL, x2: W - padR, y1: y(0), y2: y(0), stroke: C.red, strokeWidth: "1.5" }),
+            buffer > 0 && React.createElement("line", { x1: padL, x2: W - padR, y1: y(buffer), y2: y(buffer), stroke: C.amber, strokeDasharray: "5 4" }),
+            nowIdx >= 0 && nowIdx < n && (React.createElement("g", null,
+                React.createElement("line", { x1: x(nowIdx), x2: x(nowIdx), y1: padT, y2: H - padB, stroke: C.sub, strokeDasharray: "2 3" }),
+                React.createElement("text", { x: x(nowIdx) + 4, y: padT + 9, fill: C.sub, fontSize: "10" }, "Now"))),
+            React.createElement("path", { d: path, fill: "none", stroke: C.teal, strokeWidth: "2.5", strokeLinejoin: "round" }),
+            data.map((d, i) => (i % every === 0 ? React.createElement("text", { key: d.name, x: x(i), y: H - 9, fill: C.sub, fontSize: "10", textAnchor: "middle" }, d.name) : null)),
+            h && (React.createElement("g", null,
+                React.createElement("line", { x1: x(hover), x2: x(hover), y1: padT, y2: H - padB, stroke: C.head, strokeOpacity: "0.35" }),
+                React.createElement("circle", { cx: x(hover), cy: y(h.balance), r: "4", fill: C.teal, stroke: "#0f1624", strokeWidth: "2" })))),
+        h && (React.createElement("div", { style: { position: "absolute", top: 4, left: `${Math.min(70, Math.max(2, (x(hover) / W) * 100 - 14))}%`, background: "#1a1f2e", border: `1px solid ${C.line}`, borderRadius: 10, padding: "8px 12px", fontSize: 12, pointerEvents: "none", whiteSpace: "nowrap" } },
+            React.createElement("div", { style: { color: C.head, fontWeight: 700, marginBottom: 3 } }, h.name),
+            React.createElement("div", { style: { color: C.teal } },
+                "Balance: ",
+                fmt(h.balance)),
+            React.createElement("div", { style: { color: h.flow >= 0 ? C.green : C.red } },
+                "This month: ",
+                sfmt(h.flow))))));
+}
+/* ============ Cloud sync (Supabase table app_state, one row per tool) ============ */
+const TABLE = "app_state";
+const cacheName = (k) => `familyhub_${k}`;
+const readCache = (k) => { try {
+    return JSON.parse(localStorage.getItem(cacheName(k)) || "null");
+}
+catch (e) {
+    return null;
+} };
+const writeCache = (k, v) => { try {
+    localStorage.setItem(cacheName(k), JSON.stringify(v));
+}
+catch (e) { /* storage full or blocked */ } };
+const clearCaches = () => {
+    try {
+        Object.keys(localStorage).filter((k) => k.startsWith("familyhub_")).forEach((k) => localStorage.removeItem(k));
+    }
+    catch (e) { /* ignore */ }
+};
+function useCloudDoc(sb, key, enabled) {
+    const [st, setSt] = useState({ phase: "loading", data: null, rev: 0, status: "Loading...", error: false, conflict: null, notice: "", exists: false });
+    const ref = useRef({ version: null, data: null, dirty: false, saving: false, timer: null, retry: null, conflict: false });
+    const patch = (p) => setSt((prev) => ({ ...prev, ...p }));
+    const persist = () => writeCache(key, { version: ref.current.version, data: ref.current.data, dirty: ref.current.dirty });
+    const fetchRemote = async () => {
+        const res = await sb.from(TABLE).select("data,version").eq("key", key).maybeSingle();
+        if (res.error)
+            throw res.error;
+        return res.data;
+    };
+    const replaceWith = (data, version, notice) => {
+        ref.current.data = data;
+        ref.current.version = version;
+        ref.current.dirty = false;
+        persist();
+        ref.current.conflict = false;
+        setSt((prev) => ({ ...prev, phase: "ready", data, rev: prev.rev + 1, status: "Saved", error: false, conflict: null, notice: notice || "", exists: version !== null }));
+    };
+    const goConflict = async () => {
+        try {
+            const remote = await fetchRemote();
+            ref.current.conflict = true;
+            patch({ conflict: remote || { data: null, version: null }, status: "Not saved, see the message above", error: true });
+        }
+        catch (e) {
+            patch({ status: "Not saved, will retry", error: true });
+        }
+    };
+    const flush = async () => {
+        const r = ref.current;
+        if (!enabled || r.saving || !r.dirty || r.conflict)
+            return;
+        r.saving = true;
+        const sent = r.data;
+        patch({ status: "Saving...", error: false });
+        try {
+            if (r.version === null) {
+                const res = await sb.from(TABLE).insert({ key, data: sent, version: 1 }).select("version").single();
+                if (res.error) {
+                    if (res.error.code === "23505") {
+                        r.saving = false;
+                        await goConflict();
+                        return;
+                    }
+                    throw res.error;
+                }
+                r.version = res.data.version;
+            }
+            else {
+                const res = await sb.from(TABLE).update({ data: sent, version: r.version + 1 }).eq("key", key).eq("version", r.version).select("version");
+                if (res.error)
+                    throw res.error;
+                if (!res.data || res.data.length === 0) {
+                    r.saving = false;
+                    await goConflict();
+                    return;
+                }
+                r.version = res.data[0].version;
+            }
+            if (r.data === sent)
+                r.dirty = false;
+            persist();
+            r.saving = false;
+            patch({ status: r.dirty ? "Saving..." : "Saved", error: false, exists: true });
+            if (r.dirty)
+                schedule(300);
+        }
+        catch (e) {
+            r.saving = false;
+            persist();
+            patch({ status: "Offline, changes kept on this device", error: true });
+            clearTimeout(r.retry);
+            r.retry = setTimeout(() => flush(), 30000);
+        }
+    };
+    const schedule = (ms) => {
+        clearTimeout(ref.current.timer);
+        ref.current.timer = setTimeout(() => flush(), ms);
+    };
+    const change = (data) => {
+        ref.current.data = data;
+        ref.current.dirty = true;
+        persist();
+        patch({ status: "Saving...", data });
+        schedule(900);
+    };
+    const load = async () => {
+        var _e, _f;
+        const cache = readCache(key);
+        if (cache) {
+            ref.current = { ...ref.current, version: (_e = cache.version) !== null && _e !== void 0 ? _e : null, data: (_f = cache.data) !== null && _f !== void 0 ? _f : null, dirty: !!cache.dirty };
+        }
+        try {
+            const remote = await fetchRemote();
+            const r = ref.current;
+            if (!remote) {
+                if (r.dirty && r.data) {
+                    r.version = null;
+                    setSt((prev) => ({ ...prev, phase: "ready", data: r.data, rev: prev.rev + 1, status: "Saving...", exists: false }));
+                    flush();
+                }
+                else {
+                    replaceWith(null, null);
+                }
+                return;
+            }
+            if (r.dirty && r.data && r.version === remote.version) {
+                setSt((prev) => ({ ...prev, phase: "ready", data: r.data, rev: prev.rev + 1, status: "Saving...", exists: true }));
+                flush();
+            }
+            else if (r.dirty && r.data && r.version !== remote.version) {
+                r.conflict = true;
+                setSt((prev) => ({ ...prev, phase: "ready", data: r.data, rev: prev.rev + 1, exists: true, conflict: remote, status: "Not saved, see the message above", error: true }));
+            }
+            else {
+                replaceWith(remote.data, remote.version);
+            }
+        }
+        catch (e) {
+            if (ref.current.data || cache) {
+                setSt((prev) => ({ ...prev, phase: "ready", data: ref.current.data, rev: prev.rev + 1, status: "Offline, showing the copy on this device", error: true, exists: ref.current.version !== null }));
+            }
+            else {
+                patch({ phase: "error", status: "Could not reach the database", error: true });
+            }
+        }
+    };
+    const refresh = async () => {
+        const r = ref.current;
+        if (!enabled)
+            return;
+        if (r.dirty) {
+            flush();
+            return;
+        }
+        if (r.saving || r.conflict)
+            return;
+        try {
+            const remote = await fetchRemote();
+            if (remote && remote.version !== r.version)
+                replaceWith(remote.data, remote.version, "Loaded the latest changes made on another device.");
+        }
+        catch (e) { /* stay quiet, try again next time */ }
+    };
+    const useLatest = () => {
+        const c = st.conflict;
+        replaceWith(c ? c.data : null, c ? c.version : null, "Loaded the latest saved version.");
+    };
+    const keepMine = () => {
+        const c = st.conflict;
+        ref.current.version = c ? c.version : null;
+        ref.current.dirty = true;
+        ref.current.conflict = false;
+        patch({ conflict: null, error: false, status: "Saving..." });
+        setTimeout(() => flush(), 0);
+    };
+    useEffect(() => {
+        if (!enabled)
+            return undefined;
+        load();
+        const onFocus = () => { if (document.visibilityState === "visible")
+            refresh(); };
+        const onOnline = () => flush();
+        window.addEventListener("online", onOnline);
+        document.addEventListener("visibilitychange", onFocus);
+        window.addEventListener("focus", onFocus);
+        return () => {
+            window.removeEventListener("online", onOnline);
+            document.removeEventListener("visibilitychange", onFocus);
+            window.removeEventListener("focus", onFocus);
+            clearTimeout(ref.current.timer);
+            clearTimeout(ref.current.retry);
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [enabled, key]);
+    return { ...st, change, useLatest, keepMine, dismissNotice: () => patch({ notice: "" }), hasUnsaved: () => ref.current.dirty };
+}
+/* ============ Status of the budget, for the home screen tile ============ */
+function budgetStatus(snap) {
+    var _e, _f, _g, _h;
+    if (!snap)
+        return { text: "Not set up yet", color: C.sub };
+    const cats = withRegions(((_e = snap.categories) === null || _e === void 0 ? void 0 : _e.length) ? snap.categories : DEFAULT_EXPENSE_CATEGORIES);
+    const plan = { income: (_g = (_f = snap.plan) === null || _f === void 0 ? void 0 : _f.income) !== null && _g !== void 0 ? _g : "", expenses: ((_h = snap.plan) === null || _h === void 0 ? void 0 : _h.expenses) || {} };
+    const rows = computeRows(hydrateData(snap.data), normalizeLibs(snap.liabilities), cats, plan, snap.priorSavings);
+    const buf = num(snap.buffer);
+    const neg = rows.find((r) => r.balance < 0);
+    const low = buf > 0 ? rows.find((r) => r.balance < buf) : null;
+    const now = rows[CURRENT_IDX];
+    const balance = now ? now.balance : 0;
+    if (neg)
+        return { text: `Money runs out in ${neg.label}`, color: C.red, balance };
+    if (low)
+        return { text: `Below safety buffer in ${low.label}`, color: C.amber, balance };
+    return { text: "On track to May 2030", color: C.green, balance };
+}
+/* ============ Screens ============ */
+const FONT = "'DM Sans','Segoe UI',system-ui,sans-serif";
+const PAGE_BG = "linear-gradient(135deg,#0d1117 0%,#111827 60%,#0d1b2a 100%)";
+function CenterCard({ children }) {
+    return (React.createElement("div", { style: { fontFamily: FONT, background: PAGE_BG, minHeight: "100vh", color: C.text, display: "flex", alignItems: "center", justifyContent: "center", padding: 20, boxSizing: "border-box" } },
+        React.createElement("div", { style: { width: "100%", maxWidth: 420, background: "rgba(255,255,255,0.04)", border: `1px solid ${C.line}`, borderRadius: 18, padding: 28 } }, children)));
+}
+function SetupNeeded() {
+    return (React.createElement(CenterCard, null,
+        React.createElement("div", { style: { fontSize: 22, fontWeight: 800, color: C.head } }, "Setup needed"),
+        React.createElement("p", { style: { fontSize: 14, color: C.sub, lineHeight: 1.6 } },
+            "This page does not have its database settings yet. Open ",
+            React.createElement("b", { style: { color: C.text } }, "index.html"),
+            ", find the lines marked \"PASTE YOUR SUPABASE SETTINGS HERE\" near the top, and fill in the project URL and the anon public key.")));
+}
+function SignIn({ sb }) {
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+    const [busy, setBusy] = useState(false);
+    const [err, setErr] = useState("");
+    const submit = async (e) => {
+        e.preventDefault();
+        setBusy(true);
+        setErr("");
+        try {
+            const { error } = await sb.auth.signInWithPassword({ email: email.trim(), password });
+            if (error) {
+                const m = (error.message || "").toLowerCase();
+                setErr(m.includes("invalid") ? "Wrong email or password. Check both and try again." : m.includes("fetch") || m.includes("network")
+                    ? "Can't reach the database. If nobody used the app for a week, open Supabase and press Restore project."
+                    : error.message);
+            }
+        }
+        catch (ex) {
+            setErr("Can't reach the database. Check your internet connection and try again.");
+        }
+        setBusy(false);
+    };
+    return (React.createElement(CenterCard, null,
+        React.createElement("div", { style: { fontSize: 13, color: C.blue, fontWeight: 700 } }, "Morgan Family Hub"),
+        React.createElement("div", { style: { fontSize: 24, fontWeight: 800, color: C.head, margin: "4px 0 18px" } }, "Sign in"),
+        React.createElement("form", { onSubmit: submit },
+            React.createElement("div", { style: fieldLbl }, "Email"),
+            React.createElement("input", { type: "email", autoComplete: "username", value: email, onChange: (e) => setEmail(e.target.value), style: { ...inputStyle, fontSize: 15, padding: "11px 12px", marginBottom: 12 }, required: true }),
+            React.createElement("div", { style: fieldLbl }, "Password"),
+            React.createElement("input", { type: "password", autoComplete: "current-password", value: password, onChange: (e) => setPassword(e.target.value), style: { ...inputStyle, fontSize: 15, padding: "11px 12px", marginBottom: 16 }, required: true }),
+            React.createElement("button", { type: "submit", disabled: busy, style: { ...btn(C.blue, true), width: "100%", padding: 12, fontSize: 15, opacity: busy ? 0.6 : 1 } }, busy ? "Signing in..." : "Sign in")),
+        err && React.createElement("div", { style: { marginTop: 14, fontSize: 13, color: C.red, lineHeight: 1.5 } }, err)));
+}
+const TOOLS = [
+    { id: "budget", icon: "💰", title: "Budget", text: "Salary, spending, installments and a forecast to May 2030.", ready: true },
+    { id: "vacation", icon: "✈️", title: "Vacation planner", text: "Trips, dates, bookings and what each trip costs.", ready: false, soon: "Coming next" },
+    { id: "tool3", icon: "＋", title: "New tool", text: "A space for the next tool we build.", ready: false, soon: "Coming soon", empty: true },
+    { id: "tool4", icon: "＋", title: "New tool", text: "A space for the next tool we build.", ready: false, soon: "Coming soon", empty: true },
+];
+function Home({ email, budget, onOpen, onSignOut, signOutArmed }) {
+    const hr = new Date().getHours();
+    const hello = hr < 12 ? "Good morning" : hr < 18 ? "Good afternoon" : "Good evening";
+    const status = budget.phase === "ready" ? budgetStatus(budget.data) : null;
+    return (React.createElement("div", { style: { fontFamily: FONT, background: PAGE_BG, minHeight: "100vh", color: C.text, paddingBottom: 40 } },
+        React.createElement("div", { style: { maxWidth: 980, margin: "0 auto", padding: "28px 20px 0" } },
+            React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" } },
+                React.createElement("div", null,
+                    React.createElement("div", { style: { fontSize: 13, color: C.blue, fontWeight: 700 } }, "Morgan Family Hub"),
+                    React.createElement("div", { style: { fontSize: 28, fontWeight: 800, color: C.head, marginTop: 4 } }, hello),
+                    React.createElement("div", { style: { fontSize: 13, color: C.sub, marginTop: 4 } },
+                        "Signed in as ",
+                        email)),
+                React.createElement("button", { onClick: onSignOut, style: btn(signOutArmed ? C.red : C.sub) }, signOutArmed ? "Unsaved changes, tap again to sign out" : "Sign out")),
+            React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))", gap: 14, marginTop: 26 } }, TOOLS.map((t) => (React.createElement("button", { key: t.id, onClick: () => onOpen(t.id), disabled: t.empty, style: { textAlign: "left", fontFamily: FONT, color: C.text, cursor: t.empty ? "default" : "pointer", minHeight: 170, display: "flex", flexDirection: "column", gap: 8, padding: 18, borderRadius: 16,
+                    background: t.ready ? "linear-gradient(160deg, rgba(100,181,246,0.14), rgba(255,255,255,0.03))" : "rgba(255,255,255,0.025)",
+                    border: t.empty ? `1px dashed ${C.line}` : `1px solid ${t.ready ? "rgba(100,181,246,0.4)" : C.line}`, opacity: t.empty ? 0.6 : 1 } },
+                React.createElement("div", { style: { fontSize: 28, lineHeight: 1 } }, t.icon),
+                React.createElement("div", { style: { fontSize: 18, fontWeight: 800, color: C.head } }, t.title),
+                React.createElement("div", { style: { fontSize: 13, color: C.sub, lineHeight: 1.45 } }, t.text),
+                React.createElement("div", { style: { marginTop: "auto" } }, t.id === "budget" ? (budget.phase === "loading" ? React.createElement("span", { style: { fontSize: 12, color: C.sub } }, "Checking...")
+                    : budget.phase === "error" ? React.createElement("span", { style: badge(C.red) }, "Can't reach the database")
+                        : (React.createElement("div", null,
+                            React.createElement("span", { style: badge(status.color) }, status.text),
+                            budget.data && React.createElement("div", { style: { fontSize: 12, color: C.sub, marginTop: 6 } },
+                                "Balance now ",
+                                fmt(status.balance))))) : React.createElement("span", { style: badge(C.sub) }, t.soon)))))),
+            React.createElement("div", { style: { fontSize: 12, color: budget.error ? C.amber : C.mute, marginTop: 18 } },
+                "Budget: ",
+                budget.status))));
+}
+function Placeholder({ title, icon, onHome }) {
+    return (React.createElement("div", { style: { fontFamily: FONT, background: PAGE_BG, minHeight: "100vh", color: C.text } },
+        React.createElement("div", { style: { maxWidth: 760, margin: "0 auto", padding: "24px 20px" } },
+            React.createElement("button", { onClick: onHome, style: btn(C.sub) }, "\u25C0 Home"),
+            React.createElement("div", { style: { fontSize: 40, marginTop: 30 } }, icon),
+            React.createElement("div", { style: { fontSize: 26, fontWeight: 800, color: C.head, marginTop: 8 } }, title),
+            React.createElement("p", { style: { fontSize: 15, color: C.sub, lineHeight: 1.6, maxWidth: 520 } }, "This tool is next on the list. When it is ready it will appear here, and its data will sync between your devices like the budget."))));
+}
+function Notice({ color, children }) {
+    return (React.createElement("div", { style: { background: `${color}14`, border: `1px solid ${color}55`, borderRadius: 12, padding: "12px 14px", fontSize: 13, color: C.text, lineHeight: 1.55, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" } }, children));
+}
+function App() {
+    var _e;
+    const sb = window.__sb;
+    const [session, setSession] = useState(null);
+    const [authReady, setAuthReady] = useState(false);
+    const [screen, setScreen] = useState("home");
+    const [signOutArmed, setSignOutArmed] = useState(false);
+    useEffect(() => {
+        if (!sb)
+            return undefined;
+        sb.auth.getSession().then(({ data }) => { setSession(data.session); setAuthReady(true); });
+        const { data: sub } = sb.auth.onAuthStateChange((_evt, s) => setSession(s));
+        return () => sub.subscription.unsubscribe();
+    }, [sb]);
+    const budget = useCloudDoc(sb, "budget", !!session);
+    if (!sb)
+        return React.createElement(SetupNeeded, null);
+    if (!authReady)
+        return React.createElement(CenterCard, null,
+            React.createElement("div", { style: { color: C.blue, fontWeight: 700 } }, "Loading..."));
+    if (!session)
+        return React.createElement(SignIn, { sb: sb });
+    const signOut = async () => {
+        if (budget.hasUnsaved() && !signOutArmed) {
+            setSignOutArmed(true);
+            return;
+        }
+        clearCaches();
+        setSignOutArmed(false);
+        setScreen("home");
+        await sb.auth.signOut();
+        window.location.reload();
+    };
+    if (screen === "budget") {
+        if (budget.phase === "loading")
+            return React.createElement(CenterCard, null,
+                React.createElement("div", { style: { color: C.blue, fontWeight: 700 } }, "Opening your budget..."));
+        if (budget.phase === "error") {
+            return (React.createElement(CenterCard, null,
+                React.createElement("div", { style: { fontSize: 20, fontWeight: 800, color: C.head } }, "Can't reach the database"),
+                React.createElement("p", { style: { fontSize: 14, color: C.sub, lineHeight: 1.6 } }, "Check your internet connection. If nobody used the app for a week, open Supabase and press Restore project, then reload this page."),
+                React.createElement("button", { onClick: () => window.location.reload(), style: btn(C.blue, true) }, "Reload")));
+        }
+        let banner = null;
+        if (budget.conflict) {
+            banner = (React.createElement(Notice, { color: C.red },
+                React.createElement("span", { style: { flex: "1 1 320px" } },
+                    React.createElement("b", null, "The budget was changed on another device"),
+                    " while you were editing here, so your latest change was not saved. Choose which version to keep."),
+                React.createElement("button", { onClick: budget.useLatest, style: btn(C.blue, true) }, "Load the latest"),
+                React.createElement("button", { onClick: budget.keepMine, style: btn(C.red) }, "Keep mine")));
+        }
+        else if (!budget.exists && !budget.data) {
+            banner = (React.createElement(Notice, { color: C.amber },
+                React.createElement("span", { style: { flex: "1 1 320px" } },
+                    React.createElement("b", null, "Bring your data over from Claude:"),
+                    " in the old budget artifact tap \uD83D\uDCBE Backup, then Copy backup text. Here, tap \uD83D\uDCBE Backup, open Restore, paste and tap Restore.")));
+        }
+        else if (budget.notice) {
+            banner = (React.createElement(Notice, { color: C.green },
+                React.createElement("span", { style: { flex: "1 1 320px" } }, budget.notice),
+                React.createElement("button", { onClick: budget.dismissNotice, style: btn(C.sub) }, "OK")));
+        }
+        return (React.createElement(BudgetTool, { initial: budget.data, rev: budget.rev, onChange: budget.change, saveLabel: budget.status, saveError: budget.error, onHome: () => setScreen("home"), banner: banner }));
+    }
+    if (screen === "vacation")
+        return React.createElement(Placeholder, { title: "Vacation planner", icon: "\u2708\uFE0F", onHome: () => setScreen("home") });
+    return React.createElement(Home, { email: ((_e = session.user) === null || _e === void 0 ? void 0 : _e.email) || "", budget: budget, onOpen: (id) => { var _e; setSignOutArmed(false); if (id === "budget" || id === "vacation") {
+            setScreen(id);
+            (_e = window.scrollTo) === null || _e === void 0 ? void 0 : _e.call(window, 0, 0);
+        } }, onSignOut: signOut, signOutArmed: signOutArmed });
+}
+class Guard extends React.Component {
+    constructor(p) { super(p); this.state = { err: null }; }
+    static getDerivedStateFromError(err) { return { err }; }
+    render() {
+        if (!this.state.err)
+            return this.props.children;
+        return (React.createElement(CenterCard, null,
+            React.createElement("div", { style: { fontSize: 20, fontWeight: 800, color: C.head } }, "Something went wrong"),
+            React.createElement("p", { style: { fontSize: 13, color: C.sub, lineHeight: 1.6 } }, "Your saved data is safe. Reload the page. If this keeps happening, send Claude a screenshot of this message:"),
+            React.createElement("pre", { style: { fontSize: 11, color: C.red, whiteSpace: "pre-wrap" } }, String(this.state.err && this.state.err.message)),
+            React.createElement("button", { onClick: () => window.location.reload(), style: btn(C.blue, true) }, "Reload")));
+    }
+}
+/* ============ Start ============ */
+(function start() {
+    const configured = typeof SUPABASE_URL === "string" && SUPABASE_URL.startsWith("https://") && typeof SUPABASE_ANON_KEY === "string" && SUPABASE_ANON_KEY.length > 40;
+    window.__sb = configured && window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { persistSession: true, autoRefreshToken: true } }) : null;
+    ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(Guard, null,
+        React.createElement(App, null)));
+})();
+
+  }
+  </script>
+</body>
+</html>
