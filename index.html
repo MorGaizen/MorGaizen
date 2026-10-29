@@ -261,7 +261,10 @@ function Tag({ actual }) {
     return (React.createElement("span", { style: { fontSize: 10, fontWeight: 700, color: actual ? C.green : C.sub, background: actual ? "rgba(86,201,123,0.12)" : "rgba(255,255,255,0.05)", border: `1px solid ${actual ? "rgba(86,201,123,0.35)" : C.line}`, borderRadius: 5, padding: "2px 6px" } }, actual ? "Actual" : "Plan"));
 }
 /* ============ Forecast engine (shared with the home screen) ============ */
-function computeRows(data, liabilities, categories, plan, priorSavings) {
+const ticketKeyOf = (cats) => (cats.find((c) => c.key === "travel_tickets") || cats.find((c) => /ticket/i.test(c.label || "")) || {}).key;
+const planAmount = (c, key, plan, ticketPlan, tKey) => { var _e; return (ticketPlan && c.key === tKey && ticketPlan.covered.has(key) ? ticketPlan.byMonth[key] || 0 : num((_e = plan.expenses) === null || _e === void 0 ? void 0 : _e[c.key])); };
+function computeRows(data, liabilities, categories, plan, priorSavings, ticketPlan) {
+    const tKey = ticketKeyOf(categories);
     let bal = num(priorSavings);
     return MONTH_KEYS.map((key, i) => {
         const d = data[key] || {};
@@ -271,7 +274,7 @@ function computeRows(data, liabilities, categories, plan, priorSavings) {
         let actualExp = 0;
         let paidExp = 0;
         categories.forEach((c) => {
-            var _e, _f, _g;
+            var _e, _f;
             const v = (_e = d.expenses) === null || _e === void 0 ? void 0 : _e[c.key];
             const entered = v !== undefined && v !== "";
             if (entered) {
@@ -282,7 +285,7 @@ function computeRows(data, liabilities, categories, plan, priorSavings) {
                 expenses += num(v);
             }
             else {
-                expenses += num((_g = plan.expenses) === null || _g === void 0 ? void 0 : _g[c.key]);
+                expenses += planAmount(c, key, plan, ticketPlan, tKey);
             }
         });
         const income = incomeEntered ? num(d.income) : num(plan.income);
@@ -303,7 +306,7 @@ function computeRows(data, liabilities, categories, plan, priorSavings) {
     });
 }
 /* ============ Budget module ============ */
-function BudgetTool({ initial, rev, onChange, saveLabel, saveError, onHome, banner }) {
+function BudgetTool({ initial, rev, onChange, saveLabel, saveError, onHome, banner, ticketPlan }) {
     const [categories, setCategories] = useState(DEFAULT_EXPENSE_CATEGORIES);
     const [data, setData] = useState(() => DEFAULT_DATA(DEFAULT_EXPENSE_CATEGORIES));
     const [liabilities, setLiabilities] = useState([]);
@@ -372,7 +375,7 @@ function BudgetTool({ initial, rev, onChange, saveLabel, saveError, onHome, bann
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [backupJSON, loading]);
     /* ---------- forecast engine ---------- */
-    const rows = useMemo(() => computeRows(data, liabilities, categories, plan, priorSavings), [data, liabilities, categories, plan, priorSavings]);
+    const rows = useMemo(() => computeRows(data, liabilities, categories, plan, priorSavings, ticketPlan), [data, liabilities, categories, plan, priorSavings, ticketPlan]);
     const bufferV = num(buffer);
     const minRow = rows.reduce((m, r) => (r.balance < m.balance ? r : m), rows[0]);
     const endRow = rows[rows.length - 1];
@@ -403,7 +406,9 @@ function BudgetTool({ initial, rev, onChange, saveLabel, saveError, onHome, bann
     const mk = MONTH_KEYS[activeMonthIdx];
     const md = data[mk] || DEFAULT_MONTH_DATA(categories);
     const row = rows[activeMonthIdx];
-    const eff = (key) => { var _e, _f; const v = (_e = md.expenses) === null || _e === void 0 ? void 0 : _e[key]; return v !== undefined && v !== "" ? num(v) : num((_f = plan.expenses) === null || _f === void 0 ? void 0 : _f[key]); };
+    const tKey = ticketKeyOf(categories);
+    const planOf = (key) => planAmount({ key }, mk, plan, ticketPlan, tKey);
+    const eff = (key) => { var _e; const v = (_e = md.expenses) === null || _e === void 0 ? void 0 : _e[key]; return v !== undefined && v !== "" ? num(v) : planOf(key); };
     const effIncome = md.income !== undefined && md.income !== "" ? num(md.income) : num(plan.income);
     const regionStats = REGIONS.map((r) => {
         const cats = categories.filter((c) => regionOf(c) === r.id);
@@ -795,7 +800,7 @@ function BudgetTool({ initial, rev, onChange, saveLabel, saveError, onHome, bann
                                     React.createElement("span", { style: { fontSize: 11, color: C.sub, fontWeight: 400 } }, p ? "paid" : "due"))));
                         }))),
                     r.cats.length > 0 && (React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 10 } }, r.cats.map((c) => {
-                        var _e, _f, _g, _h;
+                        var _e, _f, _g;
                         const isPaid = !!((_e = md.paid) === null || _e === void 0 ? void 0 : _e[c.key]);
                         return (React.createElement("div", { key: c.key, style: { background: isPaid ? "rgba(86,201,123,0.05)" : C.card, border: `1px solid ${isPaid ? "rgba(86,201,123,0.3)" : "#22304a"}`, borderLeft: `3px solid ${isPaid ? C.green : c.color}`, borderRadius: 12, padding: "11px 13px" } },
                             React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, gap: 6 } },
@@ -804,8 +809,8 @@ function BudgetTool({ initial, rev, onChange, saveLabel, saveError, onHome, bann
                                     " ",
                                     c.label),
                                 React.createElement(Tick, { checked: isPaid, onChange: () => togglePaid(c.key) })),
-                            React.createElement(DualInput, { value: (_f = md.expenses) === null || _f === void 0 ? void 0 : _f[c.key], onChange: (v) => setExp(c.key, v), rate: egpRate, color: c.color, hint: (_g = plan.expenses) === null || _g === void 0 ? void 0 : _g[c.key] }),
-                            c.hasNote && (React.createElement("textarea", { value: ((_h = md.notes) === null || _h === void 0 ? void 0 : _h[c.key]) || "", onChange: (e) => setNote(c.key, e.target.value), placeholder: "What was this for?", rows: 2, style: { ...inputStyle, marginTop: 8, fontSize: 12, resize: "vertical", minHeight: 40, background: "rgba(143,163,191,0.06)" } }))));
+                            React.createElement(DualInput, { value: (_f = md.expenses) === null || _f === void 0 ? void 0 : _f[c.key], onChange: (v) => setExp(c.key, v), rate: egpRate, color: c.color, hint: planOf(c.key) }),
+                            c.hasNote && (React.createElement("textarea", { value: ((_g = md.notes) === null || _g === void 0 ? void 0 : _g[c.key]) || "", onChange: (e) => setNote(c.key, e.target.value), placeholder: "What was this for?", rows: 2, style: { ...inputStyle, marginTop: 8, fontSize: 12, resize: "vertical", minHeight: 40, background: "rgba(143,163,191,0.06)" } }))));
                     })))))),
                 React.createElement("div", { style: { background: "rgba(62,201,214,0.06)", border: "1px solid rgba(62,201,214,0.3)", borderRadius: 14, padding: 16 } },
                     React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, marginBottom: 10 } },
@@ -857,7 +862,8 @@ function BudgetTool({ initial, rev, onChange, saveLabel, saveError, onHome, bann
                                         c.icon,
                                         " ",
                                         c.label),
-                                    React.createElement(DualInput, { value: (_e = plan.expenses) === null || _e === void 0 ? void 0 : _e[c.key], onChange: (v) => setPlanExp(c.key, v), rate: egpRate, color: c.color })));
+                                    React.createElement(DualInput, { value: (_e = plan.expenses) === null || _e === void 0 ? void 0 : _e[c.key], onChange: (v) => setPlanExp(c.key, v), rate: egpRate, color: c.color }),
+                                    ticketPlan && c.key === tKey && React.createElement("div", { style: { fontSize: 11, color: C.amber, marginTop: 4 } }, "Months covered by the Vacation planner use your trip ticket prices instead.")));
                             }))));
                     }),
                     React.createElement("div", { style: { background: "rgba(0,0,0,0.2)", borderRadius: 12, padding: 14, maxWidth: 520 } },
@@ -1050,6 +1056,600 @@ function BalanceChart({ data, buffer, nowIdx }) {
             React.createElement("div", { style: { color: h.flow >= 0 ? C.green : C.red } },
                 "This month: ",
                 sfmt(h.flow))))));
+}
+/* ============ Vacation planner ============ */
+const VAC_SEED = {
+    trips: [],
+    years: {
+        2027: {
+            entitlement: "23", carryOver: "0", egyptDiff: "0",
+            ramadan: { start: "2027-02-08", end: "2027-03-08" },
+            holidays: [
+                { date: "2027-02-22", name: "Saudi Foundation Day" },
+                { date: "2027-03-07", name: "Eid al-Fitr" }, { date: "2027-03-08", name: "Eid al-Fitr" }, { date: "2027-03-09", name: "Eid al-Fitr" },
+                { date: "2027-03-10", name: "Eid al-Fitr" }, { date: "2027-03-11", name: "Eid al-Fitr" },
+                { date: "2027-05-16", name: "Eid al-Adha" }, { date: "2027-05-17", name: "Eid al-Adha" }, { date: "2027-05-18", name: "Eid al-Adha" },
+                { date: "2027-05-19", name: "Eid al-Adha" }, { date: "2027-05-20", name: "Eid al-Adha" },
+                { date: "2027-09-23", name: "Saudi National Day" },
+            ],
+            days: Object.assign({}, ...["2027-01-31", "2027-02-01", "2027-02-02", "2027-02-03", "2027-02-04", "2027-04-11", "2027-05-09", "2027-05-10", "2027-05-11", "2027-05-12",
+                "2027-05-13", "2027-06-20", "2027-07-18", "2027-08-19", "2027-08-22", "2027-08-23", "2027-08-24", "2027-08-25", "2027-08-26", "2027-09-26",
+                "2027-10-24", "2027-11-25", "2027-11-28"].map((d) => ({ [d]: "leave" })), ...["2027-01-28", "2027-02-21", "2027-03-04", "2027-04-08", "2027-05-23", "2027-06-17", "2027-07-15", "2027-08-18", "2027-09-27",
+                "2027-10-21", "2027-11-24"].map((d) => ({ [d]: "wfh" }))),
+        },
+    },
+};
+const DAY_TYPES = {
+    leave: { label: "Leave", color: "#5b8dee", cost: 1 },
+    half: { label: "Half-day leave", color: "#5b8dee", cost: 0.5 },
+    wfh: { label: "Work from home in Egypt", color: "#e8a838", cost: 0 },
+    sick: { label: "Sick leave", color: "#e07b54", cost: 0 },
+};
+const MONTH_FULL = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const DOW_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const isWeekend = (dow) => dow === 5 || dow === 6;
+const pad2 = (n) => String(n).padStart(2, "0");
+const isoOf = (y, m, d) => `${y}-${pad2(m + 1)}-${pad2(d)}`;
+const parseIso = (s) => { const [y, m, d] = s.split("-").map(Number); return new Date(Date.UTC(y, m - 1, d)); };
+const isoFromDate = (dt) => isoOf(dt.getUTCFullYear(), dt.getUTCMonth(), dt.getUTCDate());
+const addDays = (s, n) => { const dt = parseIso(s); dt.setUTCDate(dt.getUTCDate() + n); return isoFromDate(dt); };
+const dayDiff = (a, b) => Math.round((parseIso(b) - parseIso(a)) / 86400000);
+const niceDate = (s) => { const dt = parseIso(s); return `${DOW_SHORT[dt.getUTCDay()]} ${dt.getUTCDate()} ${LABELS[dt.getUTCMonth()]}`; };
+const TODAY_ISO = (() => { const d = new Date(); return isoOf(d.getFullYear(), d.getMonth(), d.getDate()); })();
+const monthKeyOfIso = (s) => { const dt = parseIso(s); return `${LABELS[dt.getUTCMonth()].toLowerCase()}${dt.getUTCFullYear()}`; };
+const normYear = (y) => {
+    var _e, _f, _g, _h, _j;
+    return ({
+        entitlement: (_e = y === null || y === void 0 ? void 0 : y.entitlement) !== null && _e !== void 0 ? _e : "23", carryOver: (_f = y === null || y === void 0 ? void 0 : y.carryOver) !== null && _f !== void 0 ? _f : "0", egyptDiff: (_g = y === null || y === void 0 ? void 0 : y.egyptDiff) !== null && _g !== void 0 ? _g : "0",
+        ramadan: { start: ((_h = y === null || y === void 0 ? void 0 : y.ramadan) === null || _h === void 0 ? void 0 : _h.start) || "", end: ((_j = y === null || y === void 0 ? void 0 : y.ramadan) === null || _j === void 0 ? void 0 : _j.end) || "" },
+        holidays: Array.isArray(y === null || y === void 0 ? void 0 : y.holidays) ? y.holidays : [], days: (y === null || y === void 0 ? void 0 : y.days) || {},
+    });
+};
+const normVac = (v) => {
+    const src = v && typeof v === "object" && v.years ? v : VAC_SEED;
+    const years = {};
+    Object.keys(src.years || {}).forEach((k) => { years[k] = normYear(src.years[k]); });
+    if (!Object.keys(years).length)
+        years[2027] = normYear(VAC_SEED.years[2027]);
+    return { years, trips: Array.isArray(src.trips) ? src.trips : [] };
+};
+/* Works out every day of a year, the trips home and the leave balance */
+function computeYear(vac, year) {
+    var _e;
+    const Y = normYear(vac.years[year]);
+    const hol = {};
+    Y.holidays.forEach((h) => { if (h.date)
+        hol[h.date] = h.name || "Holiday"; });
+    const days = [];
+    for (let m = 0; m < 12; m += 1) {
+        const dim = new Date(Date.UTC(Number(year), m + 1, 0)).getUTCDate();
+        for (let d = 1; d <= dim; d += 1) {
+            const iso = isoOf(year, m, d);
+            const dow = new Date(Date.UTC(Number(year), m, d)).getUTCDay();
+            const weekend = isWeekend(dow);
+            const holiday = hol[iso] || null;
+            const type = Y.days[iso] || null;
+            const working = !weekend && !holiday;
+            const cost = working && type ? ((_e = DAY_TYPES[type]) === null || _e === void 0 ? void 0 : _e.cost) || 0 : 0;
+            const ramadan = !!(Y.ramadan.start && Y.ramadan.end && iso >= Y.ramadan.start && iso <= Y.ramadan.end);
+            days.push({ iso, m, d, dow, weekend, holiday, type, working, cost, ramadan, past: iso < TODAY_ISO });
+        }
+    }
+    /* Trips: a run of days off (weekend, holiday) joined to leave or work-from-home days */
+    const trips = [];
+    let run = null;
+    const close = () => {
+        if (run && run.anchor) {
+            while (run.items.length && !run.items[run.items.length - 1].type && !run.items[run.items.length - 1].weekend && !run.items[run.items.length - 1].holiday)
+                run.items.pop();
+            const items = run.items;
+            const start = items[0].iso;
+            const end = items[items.length - 1].iso;
+            trips.push({
+                start, end, depart: addDays(start, -1), daysHome: items.length,
+                leave: items.reduce((t, x) => t + x.cost, 0),
+                wfh: items.filter((x) => x.type === "wfh" && x.working).length,
+                holidays: [...new Set(items.filter((x) => x.holiday).map((x) => x.holiday))],
+                past: end < TODAY_ISO, now: start <= TODAY_ISO && end >= TODAY_ISO,
+            });
+        }
+        run = null;
+    };
+    days.forEach((x) => {
+        const anchor = x.type === "leave" || x.type === "half" || x.type === "wfh";
+        const filler = x.weekend || x.holiday;
+        if (anchor || filler) {
+            if (!run)
+                run = { items: [], anchor: false };
+            run.items.push(x);
+            if (anchor)
+                run.anchor = true;
+        }
+        else
+            close();
+    });
+    close();
+    /* Ticket prices and notes are stored per trip and matched back by overlapping dates */
+    const used = new Set();
+    trips.forEach((t) => {
+        let best = null;
+        let bestOv = 0;
+        vac.trips.forEach((meta) => {
+            if (used.has(meta.id) || !meta.start || !meta.end)
+                return;
+            const ov = Math.min(dayDiff(meta.start, t.end), dayDiff(t.start, meta.end)) + 1;
+            const a = t.start > meta.start ? t.start : meta.start;
+            const b = t.end < meta.end ? t.end : meta.end;
+            const overlap = b >= a ? dayDiff(a, b) + 1 : 0;
+            if (overlap > bestOv && ov > 0) {
+                best = meta;
+                bestOv = overlap;
+            }
+        });
+        if (best)
+            used.add(best.id);
+        t.meta = best;
+        t.ticket = best ? num(best.ticketSAR) : 0;
+    });
+    const available = num(Y.entitlement) + num(Y.carryOver) + num(Y.egyptDiff);
+    const leaveDays = days.filter((x) => x.cost > 0);
+    const taken = leaveDays.filter((x) => x.past).reduce((t, x) => t + x.cost, 0);
+    const planned = leaveDays.filter((x) => !x.past).reduce((t, x) => t + x.cost, 0);
+    const sick = days.filter((x) => x.type === "sick" && x.working).length;
+    const gaps = [];
+    for (let i = 1; i < trips.length; i += 1)
+        gaps.push({ from: addDays(trips[i - 1].end, 1), to: trips[i].depart, days: dayDiff(trips[i - 1].end, trips[i].start) - 1 });
+    const longestGap = gaps.reduce((b, g) => (!b || g.days > b.days ? g : b), null);
+    const quarters = [0, 1, 2, 3].map((q) => leaveDays.filter((x) => Math.floor(x.m / 3) === q).reduce((t, x) => t + x.cost, 0));
+    return { Y, days, trips, available, taken, planned, free: available - taken - planned, sick, gaps, longestGap, quarters, holidaysMap: hol };
+}
+/* Holidays where a work-from-home day or a few leave days give a long stay */
+function bridgeIdeas(yearInfo) {
+    const { days } = yearInfo;
+    const byIso = {};
+    days.forEach((x, i) => { byIso[x.iso] = i; });
+    const ideas = [];
+    const seen = new Set();
+    days.forEach((x, i) => {
+        if (!x.holiday || seen.has(x.holiday + x.m) || x.iso < TODAY_ISO)
+            return;
+        seen.add(x.holiday + x.m);
+        let s = i;
+        let e = i;
+        while (s > 0 && (days[s - 1].weekend || days[s - 1].holiday))
+            s -= 1;
+        while (e < days.length - 1 && (days[e + 1].weekend || days[e + 1].holiday))
+            e += 1;
+        const off = e - s + 1;
+        const grow = (a2, b2) => {
+            while (a2 > 0 && (days[a2 - 1].weekend || days[a2 - 1].holiday))
+                a2 -= 1;
+            while (b2 < days.length - 1 && (days[b2 + 1].weekend || days[b2 + 1].holiday))
+                b2 += 1;
+            return [a2, b2];
+        };
+        const opts = [];
+        const wfhOk = s > 0 && days[s - 1].working;
+        const startIdx = wfhOk ? s - 1 : s;
+        if (wfhOk) {
+            const [a1, b1] = grow(s - 1, e);
+            opts.push({ text: `Work from home ${niceDate(days[s - 1].iso)}`, leave: 0, stay: b1 - a1 + 1 });
+        }
+        let e2 = e;
+        let leave = 0;
+        while (e2 < days.length - 1 && days[e2 + 1].working && leave < 3) {
+            e2 += 1;
+            leave += 1;
+        }
+        if (leave > 0 && leave <= 3 && e2 < days.length - 1 && !days[e2 + 1].working) {
+            const [a1, b1] = grow(startIdx, e2);
+            opts.push({ text: `${wfhOk ? `Work from home ${niceDate(days[s - 1].iso)}, then ` : ""}${leave} leave day${leave === 1 ? "" : "s"} after`, leave, stay: b1 - a1 + 1 });
+        }
+        const covered = days.slice(s, e + 1).some((d) => d.type) || (s > 0 && days[s - 1].type);
+        ideas.push({ name: x.holiday, from: days[s].iso, to: days[e].iso, off, opts, covered });
+    });
+    return ideas;
+}
+/* Ticket prices per month, used by the budget forecast */
+function vacationTicketPlan(raw) {
+    if (!raw)
+        return null;
+    const vac = normVac(raw);
+    const byMonth = {};
+    const covered = new Set();
+    Object.keys(vac.years).forEach((y) => {
+        const trips = computeYear(vac, y).trips;
+        if (!trips.some((t) => t.ticket > 0))
+            return;
+        LABELS.forEach((l) => covered.add(`${l.toLowerCase()}${y}`));
+        trips.forEach((t) => {
+            if (t.ticket > 0) {
+                const k = monthKeyOfIso(t.depart);
+                byMonth[k] = (byMonth[k] || 0) + t.ticket;
+            }
+        });
+    });
+    return covered.size ? { byMonth, covered } : null;
+}
+/* Short status for the home screen tile */
+function vacationStatus(raw) {
+    if (!raw)
+        return { text: "2027 plan ready to review", color: C.blue };
+    const vac = normVac(raw);
+    const all = Object.keys(vac.years).sort().flatMap((y) => computeYear(vac, y).trips);
+    const now = all.find((t) => t.now);
+    if (now)
+        return { text: `Home now, until ${niceDate(now.end)}`, color: C.green };
+    const next = all.find((t) => t.depart >= TODAY_ISO);
+    if (!next)
+        return { text: "No trips planned", color: C.sub };
+    const n = dayDiff(TODAY_ISO, next.depart);
+    return { text: n === 0 ? "Flying home tonight" : `Next trip home in ${n} day${n === 1 ? "" : "s"}`, color: C.amber };
+}
+function VacationTool({ initial, rev, onChange, saveLabel, saveError, onHome, banner }) {
+    const [vac, setVac] = useState(() => normVac(initial));
+    const [loading, setLoading] = useState(true);
+    const skipNextRef = useRef(false);
+    const baselineRef = useRef(null);
+    const years = Object.keys(vac.years).sort();
+    const [year, setYear] = useState(() => (years.includes(TODAY_ISO.slice(0, 4)) ? TODAY_ISO.slice(0, 4) : years[0]));
+    const [tab, setTab] = useState("calendar");
+    const [brush, setBrush] = useState("leave");
+    const [hint, setHint] = useState("");
+    const [pendingDelete, setPendingDelete] = useState(null);
+    const [newHol, setNewHol] = useState({ date: "", name: "" });
+    useEffect(() => {
+        setVac(normVac(initial));
+        skipNextRef.current = !!initial;
+        setLoading(false);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [rev]);
+    const json = useMemo(() => JSON.stringify(vac), [vac]);
+    useEffect(() => {
+        if (loading)
+            return;
+        if (skipNextRef.current) {
+            skipNextRef.current = false;
+            baselineRef.current = json;
+            return;
+        }
+        if (json === baselineRef.current)
+            return;
+        baselineRef.current = json;
+        onChange(vac);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [json, loading]);
+    const info = useMemo(() => computeYear(vac, year), [vac, year]);
+    const ideas = useMemo(() => bridgeIdeas(info), [info]);
+    const allTrips = useMemo(() => Object.keys(vac.years).sort().flatMap((y) => computeYear(vac, y).trips), [vac]);
+    const nowTrip = allTrips.find((t) => t.now);
+    const nextTrip = allTrips.find((t) => t.depart >= TODAY_ISO && !t.now);
+    const ticketTotal = info.trips.reduce((t, x) => t + x.ticket, 0);
+    const egpRate = 14.1;
+    const setYearData = (fn) => setVac((v) => ({ ...v, years: { ...v.years, [year]: fn(normYear(v.years[year])) } }));
+    const paint = (x) => {
+        if (brush === "holiday") {
+            setYearData((Y) => {
+                const exists = Y.holidays.some((h) => h.date === x.iso);
+                return { ...Y, holidays: exists ? Y.holidays.filter((h) => h.date !== x.iso) : [...Y.holidays, { date: x.iso, name: "Holiday" }].sort((a, b) => (a.date < b.date ? -1 : 1)) };
+            });
+            setHint(x.holiday ? `Removed the holiday on ${niceDate(x.iso)}.` : `Added a holiday on ${niceDate(x.iso)}. Rename it in Setup.`);
+            return;
+        }
+        if (brush !== "clear" && brush !== "wfh" && !x.working) {
+            setHint(`${niceDate(x.iso)} is a ${x.holiday ? "holiday" : "weekend"}, so it doesn't use any leave.`);
+            return;
+        }
+        setYearData((Y) => {
+            const days = { ...Y.days };
+            if (brush === "clear" || days[x.iso] === brush)
+                delete days[x.iso];
+            else
+                days[x.iso] = brush;
+            return { ...Y, days };
+        });
+        setHint("");
+    };
+    const setTripMeta = (t, patch) => setVac((v) => {
+        var _e;
+        const id = ((_e = t.meta) === null || _e === void 0 ? void 0 : _e.id) || `trip_${t.start}`;
+        const rest = v.trips.filter((m) => m.id !== id);
+        const base = t.meta || { id, ticketSAR: "", booked: false, note: "" };
+        return { ...v, trips: [...rest, { ...base, ...patch, id, start: t.start, end: t.end }] };
+    });
+    const addYear = () => {
+        const next = String(Number(years[years.length - 1]) + 1);
+        const last = normYear(vac.years[years[years.length - 1]]);
+        setVac((v) => ({ ...v, years: { ...v.years, [next]: { ...normYear({}), entitlement: last.entitlement } } }));
+        setYear(next);
+        setTab("setup");
+    };
+    const askDelete = (id, fn) => { if (pendingDelete === id) {
+        fn();
+        setPendingDelete(null);
+    }
+    else
+        setPendingDelete(id); };
+    if (loading) {
+        return React.createElement("div", { style: { fontFamily: FONT, background: PAGE_BG, minHeight: "100vh", color: C.blue, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 600 } }, "Opening your vacation plan...");
+    }
+    const balSegs = [
+        { v: info.taken, c: C.green, t: "Taken" },
+        { v: info.planned, c: "#5b8dee", t: "Planned" },
+        { v: Math.max(0, info.free), c: "#2a3348", t: "Free" },
+    ];
+    const balTotal = Math.max(info.available, info.taken + info.planned) || 1;
+    const cellStyle = (x) => {
+        const base = { position: "relative", aspectRatio: "1", borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 600, cursor: "pointer", border: "1px solid transparent", fontFamily: FONT, padding: 0, color: C.text, background: "rgba(255,255,255,0.04)" };
+        if (x.holiday)
+            Object.assign(base, { background: "rgba(155,127,232,0.35)", color: "#fff" });
+        else if (x.type === "leave")
+            Object.assign(base, { background: x.past ? C.green : "#5b8dee", color: "#fff" });
+        else if (x.type === "half")
+            Object.assign(base, { background: `linear-gradient(135deg, ${x.past ? C.green : "#5b8dee"} 50%, rgba(255,255,255,0.06) 50%)`, color: "#fff" });
+        else if (x.type === "wfh")
+            Object.assign(base, { background: C.amber, color: "#1a1206" });
+        else if (x.type === "sick")
+            Object.assign(base, { background: C.red, color: "#fff" });
+        else if (x.weekend)
+            Object.assign(base, { background: "rgba(255,255,255,0.015)", color: C.mute });
+        if (x.ramadan)
+            base.boxShadow = "inset 0 -3px 0 rgba(62,201,214,0.85)";
+        if (x.iso === TODAY_ISO)
+            base.border = "1px solid #fff";
+        if (x.past && !x.type && !x.holiday)
+            base.opacity = 0.45;
+        return base;
+    };
+    const legend = [
+        ["Leave", "#5b8dee"], ["Leave taken", C.green], ["Work from home in Egypt", C.amber], ["Holiday", "rgba(155,127,232,0.6)"], ["Sick", C.red], ["Weekend", "rgba(255,255,255,0.08)"],
+    ];
+    return (React.createElement("div", { style: { fontFamily: FONT, background: PAGE_BG, minHeight: "100vh", color: C.text, paddingBottom: 60 } },
+        React.createElement("div", { style: { position: "sticky", top: 0, zIndex: 50, background: "linear-gradient(90deg,#1a2235,#1e2d3d)", borderBottom: `1px solid ${C.line}`, padding: "14px 20px 0" } },
+            React.createElement("div", { style: { maxWidth: 1100, margin: "0 auto" } },
+                React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 10 } },
+                    React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 10 } },
+                        React.createElement("button", { onClick: onHome, style: btn(C.sub) }, "\u25C0 Home"),
+                        React.createElement("div", null,
+                            React.createElement("div", { style: { fontSize: 19, fontWeight: 800, color: C.head } }, "Vacation planner"),
+                            React.createElement("div", { style: { fontSize: 11, color: saveError ? C.red : C.sub } }, saveLabel))),
+                    React.createElement("div", { style: { display: "flex", gap: 6, alignItems: "center" } },
+                        React.createElement("select", { value: year, onChange: (e) => setYear(e.target.value), style: { ...selectStyle, width: "auto", fontWeight: 700, color: "#90caf9" } }, years.map((y) => React.createElement("option", { key: y, value: y }, y))),
+                        React.createElement("button", { onClick: addYear, style: btn(C.blue) }, "+ Year"))),
+                React.createElement("div", { style: { display: "flex", gap: 4 } }, [["calendar", "📅 Calendar"], ["trips", "✈️ Trips"], ["setup", "⚙️ Setup"]].map(([v, l]) => (React.createElement("button", { key: v, onClick: () => setTab(v), style: { background: tab === v ? "rgba(100,181,246,0.15)" : "transparent", border: "none", borderBottom: tab === v ? `2px solid ${C.blue}` : "2px solid transparent", color: tab === v ? C.blue : "#7a8aaa", padding: "8px 14px", cursor: "pointer", fontSize: 13, fontWeight: 700, fontFamily: FONT } }, l)))))),
+        banner ? React.createElement("div", { style: { maxWidth: 1100, margin: "0 auto", padding: "16px 20px 0" } }, banner) : null,
+        React.createElement("div", { style: { padding: 20, maxWidth: 1100, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 } },
+            React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 14 } },
+                React.createElement("div", { style: { background: "rgba(232,168,56,0.08)", border: "1px solid rgba(232,168,56,0.35)", borderRadius: 16, padding: 20 } },
+                    React.createElement(Label, { color: C.amber }, nowTrip ? "You're home" : "Next trip home"),
+                    nowTrip ? (React.createElement("div", { style: { fontSize: 22, fontWeight: 800, color: C.head, marginTop: 6 } },
+                        "Until ",
+                        niceDate(nowTrip.end),
+                        ", ",
+                        dayDiff(TODAY_ISO, nowTrip.end),
+                        " more day",
+                        dayDiff(TODAY_ISO, nowTrip.end) === 1 ? "" : "s")) : nextTrip ? (React.createElement("div", null,
+                        React.createElement("div", { style: { fontSize: 40, fontWeight: 800, color: C.head, lineHeight: 1.05, marginTop: 6 } },
+                            dayDiff(TODAY_ISO, nextTrip.depart),
+                            " ",
+                            React.createElement("span", { style: { fontSize: 18, color: C.sub, fontWeight: 700 } }, "days to go")),
+                        React.createElement("div", { style: { fontSize: 14, color: C.text, marginTop: 8 } },
+                            "Fly ",
+                            niceDate(nextTrip.depart),
+                            " night, back ",
+                            niceDate(nextTrip.end),
+                            " night"),
+                        React.createElement("div", { style: { fontSize: 12, color: C.sub, marginTop: 3 } },
+                            nextTrip.daysHome,
+                            " days home for ",
+                            r0(nextTrip.leave * 10) / 10,
+                            " leave day",
+                            nextTrip.leave === 1 ? "" : "s",
+                            nextTrip.holidays.length ? `, includes ${nextTrip.holidays.join(" and ")}` : ""))) : React.createElement("div", { style: { fontSize: 18, fontWeight: 700, color: C.sub, marginTop: 6 } }, "No trips planned yet")),
+                React.createElement("div", { style: { background: C.card, border: `1px solid ${C.line}`, borderRadius: 16, padding: 20 } },
+                    React.createElement(Label, null,
+                        "Leave balance ",
+                        year),
+                    React.createElement("div", { style: { display: "flex", alignItems: "baseline", gap: 8, marginTop: 6 } },
+                        React.createElement("div", { style: { fontSize: 34, fontWeight: 800, color: info.free < 0 ? C.red : info.free > 0 ? C.green : C.head } }, info.free % 1 ? info.free.toFixed(1) : info.free),
+                        React.createElement("div", { style: { fontSize: 14, color: C.sub } },
+                            "of ",
+                            info.available,
+                            " days free to plan")),
+                    React.createElement("div", { style: { display: "flex", height: 12, borderRadius: 6, overflow: "hidden", background: "#1a2235", margin: "12px 0 8px" } }, balSegs.filter((s) => s.v > 0).map((s) => React.createElement("div", { key: s.t, title: `${s.t}: ${s.v}`, style: { width: `${(s.v / balTotal) * 100}%`, background: s.c } }))),
+                    React.createElement("div", { style: { display: "flex", gap: 14, fontSize: 12, color: C.sub, flexWrap: "wrap" } },
+                        React.createElement("span", null,
+                            React.createElement("b", { style: { color: C.green } }, info.taken),
+                            " taken"),
+                        React.createElement("span", null,
+                            React.createElement("b", { style: { color: "#5b8dee" } }, info.planned),
+                            " planned"),
+                        React.createElement("span", null,
+                            React.createElement("b", { style: { color: C.text } }, info.sick),
+                            " sick")),
+                    info.free < 0 && React.createElement("div", { style: { fontSize: 12, color: C.red, marginTop: 8 } },
+                        "You've planned ",
+                        Math.abs(info.free),
+                        " more day",
+                        Math.abs(info.free) === 1 ? "" : "s",
+                        " than you have.")),
+                React.createElement("div", { style: { background: C.card, border: `1px solid ${C.line}`, borderRadius: 16, padding: 20 } },
+                    React.createElement(Label, null,
+                        year,
+                        " at a glance"),
+                    React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 10 } },
+                        React.createElement("div", null,
+                            React.createElement("div", { style: { fontSize: 24, fontWeight: 800, color: C.head } }, info.trips.length),
+                            React.createElement("div", { style: { fontSize: 12, color: C.sub } }, "trips home")),
+                        React.createElement("div", null,
+                            React.createElement("div", { style: { fontSize: 24, fontWeight: 800, color: C.head } }, info.trips.reduce((t, x) => t + x.daysHome, 0)),
+                            React.createElement("div", { style: { fontSize: 12, color: C.sub } }, "days at home")),
+                        React.createElement("div", null,
+                            React.createElement("div", { style: { fontSize: 24, fontWeight: 800, color: info.longestGap && info.longestGap.days > 45 ? C.red : C.head } }, info.longestGap ? info.longestGap.days : "-"),
+                            React.createElement("div", { style: { fontSize: 12, color: C.sub } },
+                                "longest days away",
+                                info.longestGap ? `, ${niceDate(info.longestGap.from)} to ${niceDate(info.longestGap.to)}` : "")),
+                        React.createElement("div", null,
+                            React.createElement("div", { style: { fontSize: 24, fontWeight: 800, color: C.head } }, fmt(ticketTotal).replace("SAR ", "")),
+                            React.createElement("div", { style: { fontSize: 12, color: C.sub } }, "SAR on tickets"))))),
+            tab === "calendar" && (React.createElement(Card, null,
+                React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, flexWrap: "wrap", marginBottom: 12 } },
+                    React.createElement("div", null,
+                        React.createElement("div", { style: { fontSize: 15, fontWeight: 800, color: C.head } },
+                            year,
+                            " calendar"),
+                        React.createElement("div", { style: { fontSize: 12, color: C.sub, marginTop: 2 } }, "Pick what to mark, then tap days. Tap a marked day again to clear it."))),
+                React.createElement("div", { style: { display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 } }, [["leave", "Leave", "#5b8dee"], ["half", "Half day", "#5b8dee"], ["wfh", "WFH in Egypt", C.amber], ["sick", "Sick", C.red], ["holiday", "Holiday", C.purple], ["clear", "Clear", C.sub]].map(([k, l, c]) => (React.createElement("button", { key: k, onClick: () => { setBrush(k); setHint(""); }, style: { ...btn(c, brush === k), padding: "7px 12px" } }, l)))),
+                React.createElement("div", { style: { fontSize: 12, color: hint ? C.amber : C.mute, minHeight: 18, marginBottom: 8 } }, hint || "A teal line under a day means Ramadan."),
+                React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 16 } }, MONTH_FULL.map((mn, m) => {
+                    const md = info.days.filter((x) => x.m === m);
+                    const lead = md[0].dow;
+                    const lv = md.reduce((t, x) => t + x.cost, 0);
+                    return (React.createElement("div", { key: mn },
+                        React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 } },
+                            React.createElement("span", { style: { fontSize: 13, fontWeight: 800, color: C.head } }, mn),
+                            lv > 0 && React.createElement("span", { style: { fontSize: 11, color: "#90b4f5" } },
+                                lv,
+                                " leave")),
+                        React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 3 } },
+                            ["S", "M", "T", "W", "T", "F", "S"].map((d, i) => React.createElement("div", { key: i, style: { fontSize: 9, color: isWeekend(i) ? C.mute : C.sub, textAlign: "center", paddingBottom: 2 } }, d)),
+                            Array.from({ length: lead }).map((_, i) => React.createElement("div", { key: `e${i}` })),
+                            md.map((x) => (React.createElement("button", { key: x.iso, onClick: () => paint(x), style: cellStyle(x), title: `${niceDate(x.iso)}${x.holiday ? `, ${x.holiday}` : ""}${x.type ? `, ${DAY_TYPES[x.type].label}` : ""}${x.ramadan ? ", Ramadan" : ""}`, "aria-label": `${niceDate(x.iso)}${x.holiday ? `, ${x.holiday}` : ""}${x.type ? `, ${DAY_TYPES[x.type].label}` : ""}` }, x.d))))));
+                })),
+                React.createElement("div", { style: { display: "flex", gap: 14, flexWrap: "wrap", marginTop: 16, fontSize: 11, color: C.sub } },
+                    legend.map(([l, c]) => React.createElement("span", { key: l, style: { display: "flex", alignItems: "center", gap: 5 } },
+                        React.createElement("span", { style: { width: 11, height: 11, borderRadius: 3, background: c, display: "inline-block" } }),
+                        l)),
+                    React.createElement("span", { style: { display: "flex", alignItems: "center", gap: 5 } },
+                        React.createElement("span", { style: { width: 11, height: 11, borderRadius: 3, boxShadow: "inset 0 -3px 0 rgba(62,201,214,0.85)", background: "rgba(255,255,255,0.06)", display: "inline-block" } }),
+                        "Ramadan")))),
+            tab === "calendar" && (React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 14 } },
+                React.createElement(Card, null,
+                    React.createElement("div", { style: { fontSize: 15, fontWeight: 800, color: C.head } }, "Leave by quarter"),
+                    React.createElement("div", { style: { fontSize: 12, color: C.sub, margin: "2px 0 12px" } },
+                        "How your ",
+                        info.available,
+                        " days are spread over the year."),
+                    info.quarters.map((q, i) => (React.createElement("div", { key: i, style: { display: "flex", alignItems: "center", gap: 10, marginBottom: 8 } },
+                        React.createElement("span", { style: { width: 26, fontSize: 12, color: C.sub, fontWeight: 700 } },
+                            "Q",
+                            i + 1),
+                        React.createElement("div", { style: { flex: 1, height: 10, background: "#1a2235", borderRadius: 5, overflow: "hidden" } },
+                            React.createElement("div", { style: { width: `${(q / Math.max(1, ...info.quarters)) * 100}%`, height: "100%", background: "#5b8dee" } })),
+                        React.createElement("span", { style: { width: 52, textAlign: "right", fontSize: 12, color: C.text } },
+                            q,
+                            " day",
+                            q === 1 ? "" : "s")))),
+                    info.gaps.length > 0 && (React.createElement("div", { style: { fontSize: 12, color: C.sub, marginTop: 10, lineHeight: 1.5 } },
+                        "On average you're away ",
+                        Math.round(info.gaps.reduce((t, g) => t + g.days, 0) / info.gaps.length),
+                        " days between trips."))),
+                React.createElement(Card, null,
+                    React.createElement("div", { style: { fontSize: 15, fontWeight: 800, color: C.head } }, "Holiday opportunities"),
+                    React.createElement("div", { style: { fontSize: 12, color: C.sub, margin: "2px 0 10px" } }, "Long stays for few or no leave days, around this year's holidays."),
+                    ideas.length === 0 && React.createElement("div", { style: { fontSize: 13, color: C.sub } },
+                        "No upcoming holidays in ",
+                        year,
+                        ". Add them in Setup."),
+                    ideas.map((h) => (React.createElement("div", { key: h.name + h.from, style: { padding: "8px 0", borderBottom: "1px solid #1e2a38" } },
+                        React.createElement("div", { style: { display: "flex", justifyContent: "space-between", gap: 8 } },
+                            React.createElement("span", { style: { fontSize: 13, fontWeight: 700, color: C.head } }, h.name),
+                            h.covered ? React.createElement("span", { style: badge(C.green) }, "In your plan") : React.createElement("span", { style: { fontSize: 11, color: C.sub } },
+                                h.off,
+                                " days off")),
+                        h.opts.map((o) => (React.createElement("div", { key: o.text, style: { fontSize: 12, color: C.sub, marginTop: 3 } },
+                            React.createElement("b", { style: { color: C.amber } },
+                                o.stay,
+                                " days home"),
+                            " for ",
+                            o.leave,
+                            " leave day",
+                            o.leave === 1 ? "" : "s",
+                            ": ",
+                            o.text))))))))),
+            tab === "trips" && (React.createElement(Card, null,
+                React.createElement("div", { style: { fontSize: 15, fontWeight: 800, color: C.head } },
+                    "Trips home in ",
+                    year),
+                React.createElement("div", { style: { fontSize: 12, color: C.sub, margin: "2px 0 14px", maxWidth: 680 } }, "Built automatically from your calendar. Add the ticket price and it goes straight into the Budget's Travel Tickets for the month you fly. Once a year has ticket prices, the Budget uses them for that year instead of your normal monthly amount."),
+                info.trips.length === 0 && React.createElement("div", { style: { fontSize: 13, color: C.sub } }, "No trips yet. Mark leave or work-from-home days on the calendar and they appear here."),
+                React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 10 } }, info.trips.map((t, i) => {
+                    var _e, _f, _g, _h;
+                    const gap = i > 0 ? dayDiff(info.trips[i - 1].end, t.start) - 1 : null;
+                    return (React.createElement("div", { key: t.start },
+                        gap !== null && React.createElement("div", { style: { fontSize: 11, color: gap > 45 ? C.red : C.mute, textAlign: "center", margin: "-2px 0 8px" } },
+                            gap,
+                            " days in Saudi"),
+                        React.createElement("div", { style: { background: t.past ? "rgba(255,255,255,0.02)" : C.card, border: `1px solid ${t.now ? C.green : C.line}`, borderLeft: `3px solid ${t.past ? C.mute : C.amber}`, borderRadius: 12, padding: 14, opacity: t.past ? 0.7 : 1 } },
+                            React.createElement("div", { style: { display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" } },
+                                React.createElement("div", null,
+                                    React.createElement("div", { style: { fontSize: 15, fontWeight: 800, color: C.head } },
+                                        niceDate(t.depart),
+                                        " night ",
+                                        React.createElement("span", { style: { color: C.sub, fontWeight: 400 } }, "to"),
+                                        " ",
+                                        niceDate(t.end),
+                                        " night"),
+                                    React.createElement("div", { style: { fontSize: 12, color: C.sub, marginTop: 3 } },
+                                        t.daysHome,
+                                        " days home, ",
+                                        t.leave,
+                                        " leave day",
+                                        t.leave === 1 ? "" : "s",
+                                        t.wfh ? `, ${t.wfh} WFH day${t.wfh === 1 ? "" : "s"}` : "",
+                                        t.holidays.length ? `, ${t.holidays.join(" and ")}` : "")),
+                                React.createElement("div", { style: { display: "flex", gap: 6, alignItems: "flex-start" } },
+                                    t.now && React.createElement("span", { style: badge(C.green) }, "Home now"),
+                                    t.past && React.createElement("span", { style: badge(C.sub) }, "Done"),
+                                    React.createElement(Tick, { checked: !!((_e = t.meta) === null || _e === void 0 ? void 0 : _e.booked), onChange: () => { var _e; return setTripMeta(t, { booked: !((_e = t.meta) === null || _e === void 0 ? void 0 : _e.booked) }); }, on: "Booked", off: "Not booked", color: C.green }))),
+                            React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 12, marginTop: 12 } },
+                                React.createElement("div", null,
+                                    React.createElement("div", { style: fieldLbl }, "Ticket price"),
+                                    React.createElement(DualInput, { value: (_g = (_f = t.meta) === null || _f === void 0 ? void 0 : _f.ticketSAR) !== null && _g !== void 0 ? _g : "", onChange: (v) => setTripMeta(t, { ticketSAR: v }), rate: egpRate, color: C.amber })),
+                                React.createElement("div", null,
+                                    React.createElement("div", { style: fieldLbl }, "Note"),
+                                    React.createElement("input", { type: "text", value: ((_h = t.meta) === null || _h === void 0 ? void 0 : _h.note) || "", onChange: (e) => setTripMeta(t, { note: e.target.value }), placeholder: "Flight, airline, plans...", style: { ...inputStyle, padding: "9px 10px", marginTop: 13 } }))))));
+                })),
+                ticketTotal > 0 && React.createElement("div", { style: { fontSize: 13, color: C.sub, marginTop: 14 } },
+                    "Tickets this year: ",
+                    React.createElement("b", { style: { color: C.amber } }, fmt(ticketTotal)),
+                    ", EGP ",
+                    r0(ticketTotal * egpRate)))),
+            tab === "setup" && (React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 16 } },
+                React.createElement(Card, null,
+                    React.createElement(SectionTitle, { n: "1", title: `Leave entitlement ${year}`, sub: "Days you can take this year. All three add up to your balance." }),
+                    React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, maxWidth: 640 } }, [["entitlement", "Annual leave days"], ["carryOver", `Carried over from ${Number(year) - 1}`], ["egyptDiff", "Egypt holidays difference"]].map(([k, l]) => (React.createElement("div", { key: k },
+                        React.createElement("div", { style: fieldLbl }, l),
+                        React.createElement("input", { type: "number", inputMode: "decimal", value: info.Y[k], onChange: (e) => setYearData((Y) => ({ ...Y, [k]: e.target.value })), style: { ...inputStyle, fontSize: 16, fontWeight: 700 } })))))),
+                React.createElement(Card, null,
+                    React.createElement(SectionTitle, { n: "2", title: "Ramadan", sub: "Shown as a teal line on the calendar." }),
+                    React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, maxWidth: 420 } }, [["start", "First day"], ["end", "Last day"]].map(([k, l]) => (React.createElement("div", { key: k },
+                        React.createElement("div", { style: fieldLbl }, l),
+                        React.createElement("input", { type: "date", value: info.Y.ramadan[k], onChange: (e) => setYearData((Y) => ({ ...Y, ramadan: { ...Y.ramadan, [k]: e.target.value } })), style: inputStyle })))))),
+                React.createElement(Card, null,
+                    React.createElement(SectionTitle, { n: "3", title: "Public holidays", sub: "Holidays never use leave. You can also tap Holiday on the calendar and mark days directly." }),
+                    React.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-end", marginBottom: 12 } },
+                        React.createElement("div", null,
+                            React.createElement("div", { style: fieldLbl }, "Date"),
+                            React.createElement("input", { type: "date", value: newHol.date, onChange: (e) => setNewHol((h) => ({ ...h, date: e.target.value })), style: { ...inputStyle, width: 170 } })),
+                        React.createElement("div", { style: { flex: "1 1 200px" } },
+                            React.createElement("div", { style: fieldLbl }, "Name"),
+                            React.createElement("input", { type: "text", value: newHol.name, onChange: (e) => setNewHol((h) => ({ ...h, name: e.target.value })), placeholder: "e.g. Eid al-Fitr", style: inputStyle })),
+                        React.createElement("button", { disabled: !newHol.date.startsWith(year), onClick: () => { setYearData((Y) => ({ ...Y, holidays: [...Y.holidays.filter((h) => h.date !== newHol.date), { date: newHol.date, name: newHol.name.trim() || "Holiday" }].sort((a, b) => (a.date < b.date ? -1 : 1)) })); setNewHol({ date: "", name: "" }); }, style: { ...btn(C.purple, true), opacity: newHol.date.startsWith(year) ? 1 : 0.4 } }, "Add holiday")),
+                    info.Y.holidays.length === 0 && React.createElement("div", { style: { fontSize: 13, color: C.sub } },
+                        "No holidays added for ",
+                        year,
+                        " yet."),
+                    React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 6 } }, info.Y.holidays.map((h) => {
+                        const id = `hol:${h.date}`;
+                        return (React.createElement("div", { key: h.date, style: { display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", background: C.card, border: "1px solid #22304a", borderLeft: `3px solid ${C.purple}`, borderRadius: 10, padding: "7px 10px" } },
+                            React.createElement("span", { style: { width: 110, fontSize: 13, color: C.text } }, niceDate(h.date)),
+                            React.createElement("input", { type: "text", value: h.name, onChange: (e) => setYearData((Y) => ({ ...Y, holidays: Y.holidays.map((x) => (x.date === h.date ? { ...x, name: e.target.value } : x)) })), style: { ...inputStyle, flex: "1 1 160px", width: "auto", padding: "6px 9px" } }),
+                            React.createElement("button", { onClick: () => askDelete(id, () => setYearData((Y) => ({ ...Y, holidays: Y.holidays.filter((x) => x.date !== h.date) }))), style: { ...btn(C.red), padding: "5px 10px" } }, pendingDelete === id ? "Sure?" : "✕")));
+                    }))),
+                years.length > 1 && (React.createElement(Card, null,
+                    React.createElement(SectionTitle, { n: "4", title: `Remove ${year}`, sub: "Deletes every day, holiday and trip note for this year." }),
+                    React.createElement("button", { onClick: () => askDelete(`year:${year}`, () => { setVac((v) => { const y2 = { ...v.years }; delete y2[year]; return { ...v, years: y2 }; }); setYear(years.find((y) => y !== year)); }), style: btn(C.red) }, pendingDelete === `year:${year}` ? `Tap again to delete ${year}` : `Delete ${year}`))))))));
 }
 /* ============ Cloud sync (Supabase table app_state, one row per tool) ============ */
 const TABLE = "app_state";
@@ -1249,13 +1849,13 @@ function useCloudDoc(sb, key, enabled) {
     return { ...st, change, useLatest, keepMine, dismissNotice: () => patch({ notice: "" }), hasUnsaved: () => ref.current.dirty };
 }
 /* ============ Status of the budget, for the home screen tile ============ */
-function budgetStatus(snap) {
+function budgetStatus(snap, ticketPlan) {
     var _e, _f, _g, _h;
     if (!snap)
         return { text: "Not set up yet", color: C.sub };
     const cats = withRegions(((_e = snap.categories) === null || _e === void 0 ? void 0 : _e.length) ? snap.categories : DEFAULT_EXPENSE_CATEGORIES);
     const plan = { income: (_g = (_f = snap.plan) === null || _f === void 0 ? void 0 : _f.income) !== null && _g !== void 0 ? _g : "", expenses: ((_h = snap.plan) === null || _h === void 0 ? void 0 : _h.expenses) || {} };
-    const rows = computeRows(hydrateData(snap.data), normalizeLibs(snap.liabilities), cats, plan, snap.priorSavings);
+    const rows = computeRows(hydrateData(snap.data), normalizeLibs(snap.liabilities), cats, plan, snap.priorSavings, ticketPlan);
     const buf = num(snap.buffer);
     const neg = rows.find((r) => r.balance < 0);
     const low = buf > 0 ? rows.find((r) => r.balance < buf) : null;
@@ -1318,14 +1918,15 @@ function SignIn({ sb }) {
 }
 const TOOLS = [
     { id: "budget", icon: "💰", title: "Budget", text: "Salary, spending, installments and a forecast to May 2030.", ready: true },
-    { id: "vacation", icon: "✈️", title: "Vacation planner", text: "Trips, dates, bookings and what each trip costs.", ready: false, soon: "Coming next" },
+    { id: "vacation", icon: "✈️", title: "Vacation planner", text: "Leave balance, trips home and what each trip costs.", ready: true },
     { id: "tool3", icon: "＋", title: "New tool", text: "A space for the next tool we build.", ready: false, soon: "Coming soon", empty: true },
     { id: "tool4", icon: "＋", title: "New tool", text: "A space for the next tool we build.", ready: false, soon: "Coming soon", empty: true },
 ];
-function Home({ email, budget, onOpen, onSignOut, signOutArmed }) {
+function Home({ email, budget, vacation, ticketPlan, onOpen, onSignOut, signOutArmed }) {
     const hr = new Date().getHours();
     const hello = hr < 12 ? "Good morning" : hr < 18 ? "Good afternoon" : "Good evening";
-    const status = budget.phase === "ready" ? budgetStatus(budget.data) : null;
+    const status = budget.phase === "ready" ? budgetStatus(budget.data, ticketPlan) : null;
+    const vstatus = vacation.phase === "ready" ? vacationStatus(vacation.data) : null;
     return (React.createElement("div", { style: { fontFamily: FONT, background: PAGE_BG, minHeight: "100vh", color: C.text, paddingBottom: 40 } },
         React.createElement("div", { style: { maxWidth: 980, margin: "0 auto", padding: "28px 20px 0" } },
             React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" } },
@@ -1348,7 +1949,9 @@ function Home({ email, budget, onOpen, onSignOut, signOutArmed }) {
                             React.createElement("span", { style: badge(status.color) }, status.text),
                             budget.data && React.createElement("div", { style: { fontSize: 12, color: C.sub, marginTop: 6 } },
                                 "Balance now ",
-                                fmt(status.balance))))) : React.createElement("span", { style: badge(C.sub) }, t.soon)))))),
+                                fmt(status.balance))))) : t.id === "vacation" ? (vacation.phase === "loading" ? React.createElement("span", { style: { fontSize: 12, color: C.sub } }, "Checking...")
+                    : vacation.phase === "error" ? React.createElement("span", { style: badge(C.red) }, "Can't reach the database")
+                        : React.createElement("span", { style: badge(vstatus.color) }, vstatus.text)) : React.createElement("span", { style: badge(C.sub) }, t.soon)))))),
             React.createElement("div", { style: { fontSize: 12, color: budget.error ? C.amber : C.mute, marginTop: 18 } },
                 "Budget: ",
                 budget.status))));
@@ -1371,6 +1974,7 @@ function App() {
     const [authReady, setAuthReady] = useState(false);
     const [screen, setScreen] = useState("home");
     const [signOutArmed, setSignOutArmed] = useState(false);
+    const [vacIntro, setVacIntro] = useState(false);
     useEffect(() => {
         if (!sb)
             return undefined;
@@ -1379,6 +1983,8 @@ function App() {
         return () => sub.subscription.unsubscribe();
     }, [sb]);
     const budget = useCloudDoc(sb, "budget", !!session);
+    const vacation = useCloudDoc(sb, "vacation", !!session);
+    const ticketPlan = useMemo(() => (vacation.phase === "ready" ? vacationTicketPlan(vacation.data) : null), [vacation.phase, vacation.data]);
     if (!sb)
         return React.createElement(SetupNeeded, null);
     if (!authReady)
@@ -1387,7 +1993,7 @@ function App() {
     if (!session)
         return React.createElement(SignIn, { sb: sb });
     const signOut = async () => {
-        if (budget.hasUnsaved() && !signOutArmed) {
+        if ((budget.hasUnsaved() || vacation.hasUnsaved()) && !signOutArmed) {
             setSignOutArmed(true);
             return;
         }
@@ -1427,11 +2033,41 @@ function App() {
                 React.createElement("span", { style: { flex: "1 1 320px" } }, budget.notice),
                 React.createElement("button", { onClick: budget.dismissNotice, style: btn(C.sub) }, "OK")));
         }
-        return (React.createElement(BudgetTool, { initial: budget.data, rev: budget.rev, onChange: budget.change, saveLabel: budget.status, saveError: budget.error, onHome: () => setScreen("home"), banner: banner }));
+        return (React.createElement(BudgetTool, { initial: budget.data, rev: budget.rev, onChange: budget.change, saveLabel: budget.status, saveError: budget.error, onHome: () => setScreen("home"), banner: banner, ticketPlan: ticketPlan }));
     }
-    if (screen === "vacation")
-        return React.createElement(Placeholder, { title: "Vacation planner", icon: "\u2708\uFE0F", onHome: () => setScreen("home") });
-    return React.createElement(Home, { email: ((_e = session.user) === null || _e === void 0 ? void 0 : _e.email) || "", budget: budget, onOpen: (id) => { var _e; setSignOutArmed(false); if (id === "budget" || id === "vacation") {
+    if (screen === "vacation") {
+        if (vacation.phase === "loading")
+            return React.createElement(CenterCard, null,
+                React.createElement("div", { style: { color: C.blue, fontWeight: 700 } }, "Opening your vacation plan..."));
+        if (vacation.phase === "error") {
+            return (React.createElement(CenterCard, null,
+                React.createElement("div", { style: { fontSize: 20, fontWeight: 800, color: C.head } }, "Can't reach the database"),
+                React.createElement("p", { style: { fontSize: 14, color: C.sub, lineHeight: 1.6 } }, "Check your internet connection, then reload this page."),
+                React.createElement("button", { onClick: () => window.location.reload(), style: btn(C.blue, true) }, "Reload")));
+        }
+        let vbanner = null;
+        if (vacation.conflict) {
+            vbanner = (React.createElement(Notice, { color: C.red },
+                React.createElement("span", { style: { flex: "1 1 320px" } },
+                    React.createElement("b", null, "The plan was changed on another device"),
+                    " while you were editing here, so your latest change was not saved. Choose which version to keep."),
+                React.createElement("button", { onClick: vacation.useLatest, style: btn(C.blue, true) }, "Load the latest"),
+                React.createElement("button", { onClick: vacation.keepMine, style: btn(C.red) }, "Keep mine")));
+        }
+        else if (vacIntro) {
+            vbanner = (React.createElement(Notice, { color: C.blue },
+                React.createElement("span", { style: { flex: "1 1 320px" } }, "Your 2027 plan was loaded from your Excel sheet: 23 leave days, 11 work-from-home days and the Saudi holidays. Check it on the calendar."),
+                React.createElement("button", { onClick: () => setVacIntro(false), style: btn(C.sub) }, "OK")));
+        }
+        else if (vacation.notice) {
+            vbanner = (React.createElement(Notice, { color: C.green },
+                React.createElement("span", { style: { flex: "1 1 320px" } }, vacation.notice),
+                React.createElement("button", { onClick: vacation.dismissNotice, style: btn(C.sub) }, "OK")));
+        }
+        return React.createElement(VacationTool, { initial: vacation.data, rev: vacation.rev, onChange: vacation.change, saveLabel: vacation.status, saveError: vacation.error, onHome: () => setScreen("home"), banner: vbanner });
+    }
+    return React.createElement(Home, { email: ((_e = session.user) === null || _e === void 0 ? void 0 : _e.email) || "", budget: budget, vacation: vacation, ticketPlan: ticketPlan, onOpen: (id) => { var _e; setSignOutArmed(false); if (id === "vacation" && vacation.phase === "ready" && !vacation.exists)
+            setVacIntro(true); if (id === "budget" || id === "vacation") {
             setScreen(id);
             (_e = window.scrollTo) === null || _e === void 0 ? void 0 : _e.call(window, 0, 0);
         } }, onSignOut: signOut, signOutArmed: signOutArmed });
