@@ -1667,6 +1667,423 @@ function VacationTool({ initial, rev, onChange, saveLabel, saveError, onHome, ba
                     React.createElement(SectionTitle, { n: "5", title: `Remove ${year}`, sub: "Deletes every day, holiday and trip note for this year." }),
                     React.createElement("button", { onClick: () => askDelete(`year:${year}`, () => { setVac((v) => { const y2 = { ...v.years }; delete y2[year]; return { ...v, years: y2 }; }); setYear(years.find((y) => y !== year)); }), style: btn(C.red) }, pendingDelete === `year:${year}` ? `Tap again to delete ${year}` : `Delete ${year}`))))))));
 }
+/* Attendance history imported from Kafaa_Attendance_2025.xlsx (Nov 2025 to Oct 2026) */
+const ATT_SEED = { "settings": { "hours": "09:00", "ramadanHours": "06:00", "tolerance": "30" }, "ramadan": [{ "start": "2026-02-18", "end": "2026-03-18" }], "holidays": [{ "date": "2026-02-22", "name": "Saudi Foundation Day" }, { "date": "2026-03-18", "name": "Eid al-Fitr" }, { "date": "2026-03-19", "name": "Eid al-Fitr" }, { "date": "2026-03-22", "name": "Eid al-Fitr" }, { "date": "2026-03-23", "name": "Eid al-Fitr" }, { "date": "2026-03-24", "name": "Eid al-Fitr" }, { "date": "2026-05-26", "name": "Eid al-Adha" }, { "date": "2026-05-27", "name": "Eid al-Adha" }, { "date": "2026-05-28", "name": "Eid al-Adha" }, { "date": "2026-05-31", "name": "Eid al-Adha" }, { "date": "2026-06-01", "name": "Eid al-Adha" }, { "date": "2026-09-23", "name": "Saudi National Day" }], "days": { "2025-11-02": { "in": "08:50", "out": "22:00" }, "2025-11-03": { "in": "08:45", "out": "18:00" }, "2025-11-04": { "in": "08:50", "out": "18:00" }, "2025-11-05": { "in": "08:45", "out": "15:30" }, "2025-11-06": { "in": "09:30", "out": "18:00" }, "2025-11-09": { "in": "09:00", "out": "18:00" }, "2025-11-10": { "in": "09:00", "out": "18:00" }, "2025-11-11": { "in": "09:00", "out": "21:00" }, "2025-11-12": { "in": "09:00", "out": "18:00" }, "2025-11-13": { "in": "09:00", "out": "18:00" }, "2025-11-16": { "in": "08:40", "out": "18:00" }, "2025-11-17": { "in": "09:00", "out": "18:00" }, "2025-11-18": { "type": "leave" }, "2025-11-19": { "in": "09:00", "out": "18:00" }, "2025-11-20": { "in": "09:00", "out": "18:00" }, "2025-11-23": { "in": "09:00", "out": "18:00" }, "2025-11-24": { "in": "09:00", "out": "20:00" }, "2025-11-25": { "in": "10:00", "out": "19:00" }, "2025-11-26": { "in": "09:38", "out": "18:45" }, "2025-11-27": { "in": "09:20", "out": "18:00" }, "2025-11-30": { "in": "09:00", "out": "18:00" }, "2025-12-01": { "in": "09:30", "out": "18:45" }, "2025-12-02": { "in": "09:00", "out": "18:15" }, "2025-12-03": { "in": "09:00", "out": "18:00" }, "2025-12-04": { "type": "leave" }, "2025-12-07": { "in": "08:50", "out": "18:15" }, "2025-12-08": { "in": "08:55", "out": "20:05" }, "2025-12-09": { "in": "09:00", "out": "18:00" }, "2025-12-10": { "in": "09:00", "out": "18:00" }, "2025-12-11": { "type": "leave" }, "2025-12-14": { "in": "08:22", "out": "18:00" }, "2025-12-15": { "in": "08:35", "out": "19:10" }, "2025-12-16": { "in": "09:30", "out": "18:30" }, "2025-12-17": { "in": "09:00", "out": "18:00" }, "2025-12-18": { "in": "09:00", "out": "18:00" }, "2025-12-21": { "in": "09:00", "out": "18:50" }, "2025-12-22": { "in": "09:00", "out": "19:00" }, "2025-12-23": { "in": "09:00", "out": "19:47" }, "2025-12-24": { "in": "09:00", "out": "18:35" }, "2025-12-25": { "type": "leave" }, "2025-12-28": { "type": "leave" }, "2025-12-29": { "in": "09:00", "out": "18:00" }, "2025-12-30": { "in": "09:00", "out": "18:00" }, "2025-12-31": { "in": "09:00", "out": "18:00" }, "2026-01-01": { "in": "08:55", "out": "18:00" }, "2026-01-04": { "in": "09:00", "out": "18:00" }, "2026-01-05": { "in": "09:00", "out": "18:20" }, "2026-01-06": { "in": "09:00", "out": "19:00" }, "2026-01-07": { "in": "09:30", "out": "18:00" }, "2026-01-08": { "in": "09:00", "out": "18:45" }, "2026-01-11": { "in": "09:00", "out": "18:00" }, "2026-01-12": { "in": "09:00", "out": "18:00" }, "2026-01-13": { "in": "09:00", "out": "18:00" }, "2026-01-14": { "in": "09:00", "out": "18:00" }, "2026-01-15": { "in": "09:00", "out": "18:00" }, "2026-01-18": { "in": "09:00", "out": "18:00" }, "2026-01-19": { "in": "09:00", "out": "18:00" }, "2026-01-20": { "in": "09:00", "out": "18:00" }, "2026-01-21": { "in": "09:00", "out": "18:00" }, "2026-01-22": { "in": "09:00", "out": "18:00" }, "2026-01-25": { "in": "09:00", "out": "18:00" }, "2026-01-26": { "in": "09:00", "out": "18:00" }, "2026-01-27": { "in": "09:00", "out": "18:35" }, "2026-01-28": { "in": "09:00", "out": "19:45" }, "2026-01-29": { "in": "09:00", "out": "18:00" }, "2026-02-01": { "type": "leave" }, "2026-02-02": { "type": "leave" }, "2026-02-03": { "type": "leave" }, "2026-02-04": { "type": "leave" }, "2026-02-05": { "type": "leave" }, "2026-02-08": { "in": "08:30", "out": "18:00" }, "2026-02-09": { "in": "08:45", "out": "18:00" }, "2026-02-10": { "in": "09:00", "out": "18:00" }, "2026-02-11": { "in": "08:50", "out": "18:30" }, "2026-02-12": { "in": "09:00", "out": "18:40" }, "2026-02-15": { "in": "09:00", "out": "18:00" }, "2026-02-16": { "in": "09:00", "out": "18:00" }, "2026-02-17": { "in": "09:00", "out": "18:00" }, "2026-02-18": { "in": "09:30", "out": "15:30" }, "2026-02-19": { "in": "09:30", "out": "16:47" }, "2026-02-23": { "in": "09:30", "out": "17:50" }, "2026-02-24": { "in": "09:30", "out": "15:30" }, "2026-02-25": { "in": "09:30", "out": "15:30" }, "2026-02-26": { "in": "09:30", "out": "15:30" }, "2026-03-01": { "in": "09:30", "out": "15:30" }, "2026-03-02": { "in": "09:30", "out": "17:00" }, "2026-03-03": { "in": "09:30", "out": "15:30" }, "2026-03-04": { "in": "09:30", "out": "16:40" }, "2026-03-05": { "in": "09:30", "out": "15:30" }, "2026-03-08": { "in": "09:30", "out": "15:30" }, "2026-03-09": { "in": "09:30", "out": "16:30" }, "2026-03-10": { "in": "09:30", "out": "15:30" }, "2026-03-11": { "in": "09:30", "out": "17:30" }, "2026-03-12": { "in": "09:30", "out": "15:30" }, "2026-03-15": { "in": "09:30", "out": "16:10" }, "2026-03-16": { "in": "09:30", "out": "18:37" }, "2026-03-17": { "in": "09:30", "out": "15:30" }, "2026-03-25": { "type": "leave" }, "2026-03-26": { "type": "leave" }, "2026-03-29": { "in": "09:30", "out": "20:05" }, "2026-03-30": { "in": "09:00", "out": "18:00" }, "2026-03-31": { "in": "09:00", "out": "18:00" }, "2026-04-01": { "in": "09:00", "out": "18:00" }, "2026-04-02": { "in": "09:00", "out": "18:00" }, "2026-04-05": { "in": "09:00", "out": "18:00" }, "2026-04-06": { "in": "09:00", "out": "18:00" }, "2026-04-07": { "in": "09:00", "out": "19:35" }, "2026-04-08": { "in": "09:00", "out": "21:45" }, "2026-04-09": { "in": "09:00", "out": "18:00" }, "2026-04-12": { "in": "09:00", "out": "18:15" }, "2026-04-13": { "in": "09:00", "out": "18:00" }, "2026-04-14": { "in": "09:00", "out": "18:00" }, "2026-04-15": { "in": "09:00", "out": "18:30" }, "2026-04-16": { "in": "09:00", "out": "18:15" }, "2026-04-19": { "in": "09:00", "out": "18:00" }, "2026-04-20": { "in": "09:00", "out": "22:00" }, "2026-04-21": { "in": "09:00", "out": "18:00" }, "2026-04-22": { "in": "09:00", "out": "18:45" }, "2026-04-23": { "in": "09:00", "out": "18:00" }, "2026-04-26": { "in": "09:00", "out": "18:00" }, "2026-04-27": { "in": "09:00", "out": "18:00" }, "2026-04-28": { "in": "09:00", "out": "18:00" }, "2026-04-29": { "in": "09:00", "out": "18:00" }, "2026-04-30": { "in": "09:00", "out": "18:00" }, "2026-05-03": { "in": "09:00", "out": "18:00" }, "2026-05-05": { "in": "10:30", "out": "19:30" }, "2026-05-06": { "in": "09:57", "out": "19:40" }, "2026-05-07": { "in": "09:27", "out": "18:00" }, "2026-05-10": { "in": "09:00", "out": "18:00" }, "2026-05-11": { "in": "09:30", "out": "22:41" }, "2026-05-12": { "in": "09:03", "out": "18:00" }, "2026-05-13": { "in": "08:30", "out": "22:10" }, "2026-05-14": { "in": "09:13", "out": "22:45" }, "2026-05-17": { "in": "09:00", "out": "18:00" }, "2026-05-18": { "in": "09:00", "out": "21:50" }, "2026-05-19": { "in": "09:10", "out": "19:45" }, "2026-05-20": { "in": "09:15", "out": "18:30" }, "2026-05-21": { "type": "leave" }, "2026-05-24": { "type": "leave" }, "2026-05-25": { "type": "leave" }, "2026-06-02": { "in": "09:30", "out": "20:10" }, "2026-06-03": { "in": "10:00", "out": "19:40" }, "2026-06-04": { "in": "09:10", "out": "19:45" }, "2026-06-07": { "in": "08:45", "out": "20:20" }, "2026-06-08": { "in": "09:10", "out": "21:20" }, "2026-06-09": { "in": "09:45", "out": "20:40" }, "2026-06-10": { "in": "10:00", "out": "21:00" }, "2026-06-11": { "in": "08:45", "out": "18:00" }, "2026-06-12": { "in": "15:00", "out": "19:00" }, "2026-06-13": { "in": "15:00", "out": "20:00" }, "2026-06-14": { "in": "09:30", "out": "20:15" }, "2026-06-15": { "in": "08:40", "out": "21:05" }, "2026-06-16": { "in": "09:30", "out": "19:05" }, "2026-06-17": { "in": "09:05", "out": "19:44" }, "2026-06-18": { "in": "08:30", "out": "18:15" }, "2026-06-19": { "in": "13:00", "out": "15:00" }, "2026-06-21": { "in": "09:30", "out": "18:45" }, "2026-06-22": { "in": "08:40", "out": "18:47" }, "2026-06-23": { "in": "08:45", "out": "18:00" }, "2026-06-24": { "in": "08:40", "out": "22:35" }, "2026-06-25": { "in": "08:30", "out": "20:15" }, "2026-06-26": { "in": "16:59", "out": "23:59" }, "2026-06-27": { "in": "15:00", "out": "19:00" }, "2026-06-28": { "in": "08:50", "out": "23:00" }, "2026-06-29": { "in": "07:40", "out": "22:15" }, "2026-06-30": { "type": "wfh" }, "2026-07-01": { "type": "leave" }, "2026-07-02": { "type": "leave" }, "2026-07-05": { "in": "10:00", "out": "18:00" }, "2026-07-06": { "in": "09:40", "out": "17:35" }, "2026-07-07": { "in": "09:05", "out": "18:00" }, "2026-07-08": { "in": "10:00", "out": "19:20" }, "2026-07-09": { "in": "09:40", "out": "20:43" }, "2026-07-10": { "in": "11:20", "out": "23:45" }, "2026-07-11": { "in": "12:10", "out": "21:30" }, "2026-07-12": { "in": "09:40", "out": "18:15" }, "2026-07-13": { "in": "09:45", "out": "19:45" }, "2026-07-14": { "in": "09:20", "out": "20:05" }, "2026-07-15": { "in": "09:15", "out": "19:44" }, "2026-07-16": { "in": "09:50", "out": "21:10" }, "2026-07-19": { "in": "09:04", "out": "19:10" }, "2026-07-20": { "in": "09:05", "out": "20:15" }, "2026-07-21": { "in": "09:21", "out": "23:59" }, "2026-07-22": { "in": "09:25", "out": "18:30" }, "2026-07-23": { "in": "09:50", "out": "21:20" }, "2026-07-26": { "in": "09:10", "out": "19:28" }, "2026-07-27": { "in": "08:45", "out": "19:50" }, "2026-07-28": { "in": "07:50", "out": "18:00" }, "2026-07-29": { "type": "wfh" }, "2026-07-30": { "type": "leave" }, "2026-08-02": { "in": "08:22", "out": "20:10" }, "2026-08-03": { "in": "09:10", "out": "17:58" }, "2026-08-04": { "in": "10:00", "out": "18:05" }, "2026-08-05": { "in": "09:02", "out": "18:00" }, "2026-08-06": { "in": "09:15", "out": "19:25" }, "2026-08-09": { "in": "09:15", "out": "19:44" }, "2026-08-10": { "in": "08:03", "out": "20:45" }, "2026-08-11": { "in": "08:15", "out": "22:55" }, "2026-08-12": { "in": "08:25", "out": "20:20" }, "2026-08-13": { "in": "08:45", "out": "19:35" }, "2026-08-16": { "in": "08:35", "out": "19:25" }, "2026-08-17": { "in": "10:10", "out": "21:58" }, "2026-08-18": { "in": "08:16", "out": "18:40" }, "2026-08-19": { "in": "08:45", "out": "20:55" }, "2026-08-20": { "in": "10:08", "out": "18:00" }, "2026-08-23": { "type": "leave" }, "2026-08-24": { "type": "leave" }, "2026-08-25": { "type": "leave" }, "2026-08-26": { "type": "leave" }, "2026-08-27": { "type": "leave" }, "2026-08-30": { "in": "09:00", "out": "18:00", "type": "wfh" }, "2026-08-31": { "in": "08:40", "out": "18:00" }, "2026-09-01": { "in": "09:30", "out": "18:00" }, "2026-09-02": { "in": "10:00", "out": "19:03" }, "2026-09-03": { "in": "09:57", "out": "19:00" }, "2026-09-06": { "in": "08:30", "out": "19:25" }, "2026-09-07": { "in": "09:10", "out": "19:28" }, "2026-09-08": { "in": "10:40", "out": "18:45" }, "2026-09-09": { "in": "09:58", "out": "19:35" }, "2026-09-10": { "in": "09:30", "out": "21:25" }, "2026-09-13": { "in": "10:01", "out": "19:35" }, "2026-09-14": { "in": "10:40", "out": "18:30" }, "2026-09-15": { "in": "09:25", "out": "18:30" }, "2026-09-16": { "in": "08:25", "out": "16:00" }, "2026-09-17": { "type": "leave" }, "2026-09-20": { "type": "leave" }, "2026-09-21": { "in": "09:00", "out": "18:30", "type": "wfh" }, "2026-09-22": { "in": "11:00", "out": "18:00" }, "2026-09-24": { "in": "09:30", "out": "17:30" }, "2026-09-27": { "in": "09:30", "out": "19:15" }, "2026-09-28": { "in": "09:05", "out": "19:40" }, "2026-09-29": { "in": "09:35", "out": "19:00" }, "2026-09-30": { "in": "09:55", "out": "18:25" }, "2026-10-01": { "in": "09:15", "out": "18:30" }, "2026-10-04": { "in": "09:55", "out": "19:05" }, "2026-10-05": { "in": "10:05", "out": "18:30" }, "2026-10-06": { "in": "09:20", "out": "17:00" }, "2026-10-07": { "type": "leave" }, "2026-10-08": { "in": "09:50", "out": "19:30" }, "2026-10-11": { "in": "08:25", "out": "19:00" }, "2026-10-12": { "in": "10:30", "out": "21:00" }, "2026-10-13": { "in": "09:10", "out": "19:45" }, "2026-10-14": { "in": "09:15", "out": "19:30" }, "2026-10-15": { "in": "10:10", "out": "18:00" }, "2026-10-18": { "in": "09:50", "out": "19:30" }, "2026-10-19": { "in": "11:15", "out": "19:25" }, "2026-10-20": { "in": "09:10", "out": "18:30" }, "2026-10-21": { "in": "10:10", "out": "18:00" }, "2026-10-22": { "in": "09:40", "out": "19:03" }, "2026-10-25": { "in": "09:10", "out": "18:15" }, "2026-10-26": { "in": "10:10", "out": "18:15" }, "2026-10-27": { "in": "10:00", "out": "18:45" }, "2026-10-28": { "in": "09:05", "out": "17:35" }, "2026-10-29": { "in": "08:50", "out": "18:00" } } };
+/* ============ Attendance log ============ */
+/* Riyadh time is used for "today" and for the clock buttons, wherever the phone is */
+const riyadhNow = () => {
+    const parts = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Riyadh", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" })
+        .formatToParts(new Date()).reduce((o, p) => ({ ...o, [p.type]: p.value }), {});
+    return { iso: `${parts.year}-${parts.month}-${parts.day}`, hm: `${parts.hour}:${parts.minute}` };
+};
+const toMin = (hm) => { if (!hm || !/^\d{1,2}:\d{2}/.test(hm))
+    return null; const [h, m] = hm.split(":").map(Number); return h * 60 + m; };
+const fromMin = (m) => { const x = ((Math.round(m) % 1440) + 1440) % 1440; return `${pad2(Math.floor(x / 60))}:${pad2(x % 60)}`; };
+const dur = (m, signed) => {
+    if (m === null || m === undefined || isNaN(m))
+        return "-";
+    const a = Math.abs(Math.round(m));
+    return `${signed ? (m < 0 ? "-" : "+") : (m < 0 ? "-" : "")}${Math.floor(a / 60)}:${pad2(a % 60)}`;
+};
+const ATT_TYPES = { work: "Work day", wfh: "WFH in Egypt", leave: "Leave", half: "Half-day leave", sick: "Sick leave" };
+const normAtt = (a) => {
+    var _e, _f, _g, _h;
+    const src = a && typeof a === "object" && a.days ? a : ATT_SEED;
+    return {
+        settings: { hours: ((_e = src.settings) === null || _e === void 0 ? void 0 : _e.hours) || "09:00", ramadanHours: ((_f = src.settings) === null || _f === void 0 ? void 0 : _f.ramadanHours) || "06:00", tolerance: (_h = (_g = src.settings) === null || _g === void 0 ? void 0 : _g.tolerance) !== null && _h !== void 0 ? _h : "30" },
+        ramadan: Array.isArray(src.ramadan) ? src.ramadan : [],
+        holidays: Array.isArray(src.holidays) ? src.holidays : [],
+        days: src.days || {},
+    };
+};
+/* Everything known about one date: the attendance log first, then the vacation planner */
+function attContext(att, vac) {
+    const hol = {};
+    att.holidays.forEach((h) => { hol[h.date] = h.name || "Holiday"; });
+    const ram = [...att.ramadan];
+    const vacDays = {};
+    if (vac) {
+        Object.keys(vac.years || {}).forEach((y) => {
+            const Y = normYear(vac.years[y]);
+            Y.holidays.forEach((h) => { if (h.date && !hol[h.date])
+                hol[h.date] = h.name || "Holiday"; });
+            if (Y.ramadan.start && Y.ramadan.end)
+                ram.push(Y.ramadan);
+            Object.assign(vacDays, Y.days);
+        });
+    }
+    return { hol, ram, vacDays };
+}
+function attDay(iso, att, ctx, today) {
+    var _e;
+    const dt = parseIso(iso);
+    const dow = dt.getUTCDay();
+    const weekend = isWeekend(dow);
+    const holiday = ctx.hol[iso] || null;
+    const e = att.days[iso] || {};
+    const type = e.type || ctx.vacDays[iso] || null;
+    const ramadan = ctx.ram.some((r) => r.start && r.end && iso >= r.start && iso <= r.end);
+    const full = (_e = toMin(ramadan ? att.settings.ramadanHours : att.settings.hours)) !== null && _e !== void 0 ? _e : 540;
+    let required = full;
+    if (weekend || holiday || type === "leave" || type === "sick")
+        required = 0;
+    else if (type === "half")
+        required = Math.round(full / 2);
+    const tin = toMin(e.in);
+    const tout = toMin(e.out);
+    const logged = tin !== null && tout !== null;
+    const worked = logged ? tout - tin + (tout < tin ? 1440 : 0) : null;
+    const past = iso < today;
+    const isToday = iso === today;
+    let delta = null;
+    let missing = false;
+    if (logged)
+        delta = worked - required;
+    else if (required > 0 && type !== "wfh" && past)
+        missing = true;
+    return { iso, dow, d: dt.getUTCDate(), weekend, holiday, type, ramadan, required, tin, tout, logged, worked, delta, missing, past, isToday, entry: e };
+}
+function monthDays(year, m, att, ctx, today) {
+    const dim = new Date(Date.UTC(year, m + 1, 0)).getUTCDate();
+    return Array.from({ length: dim }, (_, i) => attDay(isoOf(year, m, i + 1), att, ctx, today));
+}
+function monthSummary(days) {
+    const logged = days.filter((x) => x.logged);
+    const workDays = days.filter((x) => x.required > 0);
+    const avg = (arr) => (arr.length ? arr.reduce((t, v) => t + v, 0) / arr.length : null);
+    const onWork = logged.filter((x) => x.required > 0);
+    return {
+        balance: logged.reduce((t, x) => t + x.delta, 0),
+        worked: logged.reduce((t, x) => t + x.worked, 0),
+        required: workDays.filter((x) => x.past || x.isToday).reduce((t, x) => t + x.required, 0),
+        loggedDays: logged.filter((x) => x.required > 0).length,
+        workDays: workDays.length,
+        avgIn: avg(onWork.map((x) => x.tin)),
+        avgOut: avg(onWork.map((x) => x.tout)),
+        avgWorked: avg(onWork.map((x) => x.worked)),
+        leave: days.filter((x) => (x.type === "leave" && !x.weekend && !x.holiday) || x.type === "half").reduce((t, x) => t + (x.type === "half" ? 0.5 : 1), 0),
+        wfh: days.filter((x) => x.type === "wfh").length,
+        sick: days.filter((x) => x.type === "sick" && !x.weekend).length,
+        missing: days.filter((x) => x.missing).length,
+        extraDays: logged.filter((x) => x.required === 0).length,
+    };
+}
+/* Short status for the home screen tile */
+function attendanceStatus(rawAtt, rawVac) {
+    const att = normAtt(rawAtt);
+    const vac = normVac(rawVac);
+    const ctx = attContext(att, vac);
+    const now = riyadhNow();
+    const t = attDay(now.iso, att, ctx, now.iso);
+    if (t.tin !== null && t.tout === null)
+        return { text: `In since ${fromMin(t.tin)}, full day at ${fromMin(t.tin + t.required)}`, color: C.blue };
+    const [y, mo] = now.iso.split("-").map(Number);
+    const s = monthSummary(monthDays(y, mo - 1, att, ctx, now.iso));
+    return { text: `${LABELS[mo - 1]} balance ${dur(s.balance, true)}`, color: s.balance < 0 ? C.red : C.green };
+}
+function MonthBars({ items, tol }) {
+    const boxRef = useRef(null);
+    const [W, setW] = useState(640);
+    useEffect(() => {
+        const el = boxRef.current;
+        if (!el)
+            return undefined;
+        const measure = () => setW(Math.max(300, Math.round(el.clientWidth || 640)));
+        measure();
+        if (typeof ResizeObserver === "undefined") {
+            window.addEventListener("resize", measure);
+            return () => window.removeEventListener("resize", measure);
+        }
+        const ro = new ResizeObserver(measure);
+        ro.observe(el);
+        return () => ro.disconnect();
+    }, []);
+    const H = 200;
+    const small = W < 520;
+    const padT = 18;
+    const padB = 26;
+    const max = Math.max(60, ...items.map((x) => Math.abs(x.v)));
+    const mid = padT + (H - padT - padB) / 2;
+    const scale = (H - padT - padB) / 2 / max;
+    const bw = (W / items.length) * 0.6;
+    return (React.createElement("div", { ref: boxRef, style: { width: "100%" } },
+        React.createElement("svg", { viewBox: `0 0 ${W} ${H}`, width: "100%", height: H, style: { display: "block" }, role: "img", "aria-label": "Hour balance by month" },
+            React.createElement("line", { x1: "0", x2: W, y1: mid, y2: mid, stroke: C.line }),
+            items.map((x, i) => {
+                const cx = (i + 0.5) * (W / items.length);
+                const h = Math.max(1, Math.abs(x.v) * scale);
+                const col = x.v < -tol ? C.red : x.v > tol ? C.green : C.amber;
+                return (React.createElement("g", { key: x.k },
+                    React.createElement("rect", { x: cx - bw / 2, y: x.v >= 0 ? mid - h : mid, width: bw, height: h, rx: "3", fill: col, opacity: x.current ? 1 : 0.75 }),
+                    React.createElement("text", { x: cx, y: x.v >= 0 ? mid - h - 4 : mid + h + 11, fontSize: "10", fill: C.sub, textAnchor: "middle" }, x.v && !(small && Math.abs(x.v) < 60 * 5) ? (small ? `${x.v < 0 ? "-" : "+"}${Math.round(Math.abs(x.v) / 60)}h` : dur(x.v, true)) : ""),
+                    React.createElement("text", { x: cx, y: H - 8, fontSize: "11", fill: x.current ? C.head : C.sub, fontWeight: x.current ? 700 : 400, textAnchor: "middle" }, x.label)));
+            }))));
+}
+function AttendanceTool({ initial, rev, onChange, saveLabel, saveError, onHome, banner, vacationData, onSetVacDay }) {
+    var _e, _f;
+    const [att, setAtt] = useState(() => normAtt(initial));
+    const [loading, setLoading] = useState(true);
+    const skipNextRef = useRef(false);
+    const baselineRef = useRef(null);
+    const [now, setNow] = useState(riyadhNow);
+    const [ym, setYm] = useState(() => { const [y, m] = riyadhNow().iso.split("-").map(Number); return { y, m: m - 1 }; });
+    const [tab, setTab] = useState("log");
+    const [newHol, setNewHol] = useState({ date: "", name: "" });
+    const [newRam, setNewRam] = useState({ start: "", end: "" });
+    const [openOff, setOpenOff] = useState({});
+    useEffect(() => {
+        setAtt(normAtt(initial));
+        skipNextRef.current = !!initial;
+        setLoading(false);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [rev]);
+    const json = useMemo(() => JSON.stringify(att), [att]);
+    useEffect(() => {
+        if (loading)
+            return;
+        if (skipNextRef.current) {
+            skipNextRef.current = false;
+            baselineRef.current = json;
+            return;
+        }
+        if (json === baselineRef.current)
+            return;
+        baselineRef.current = json;
+        onChange(att);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [json, loading]);
+    useEffect(() => { const t = setInterval(() => setNow(riyadhNow()), 30000); return () => clearInterval(t); }, []);
+    const vac = useMemo(() => normVac(vacationData), [vacationData]);
+    const ctx = useMemo(() => attContext(att, vac), [att, vac]);
+    const today = now.iso;
+    const days = useMemo(() => monthDays(ym.y, ym.m, att, ctx, today), [ym, att, ctx, today]);
+    const sum = useMemo(() => monthSummary(days), [days]);
+    const tol = num(att.settings.tolerance);
+    const tDay = attDay(today, att, ctx, today);
+    const last12 = useMemo(() => {
+        const out = [];
+        for (let i = 11; i >= 0; i -= 1) {
+            let y = ym.y;
+            let m = ym.m - i;
+            while (m < 0) {
+                m += 12;
+                y -= 1;
+            }
+            const s = monthSummary(monthDays(y, m, att, ctx, today));
+            out.push({ k: `${y}-${m}`, label: LABELS[m], v: s.balance, current: i === 0 });
+        }
+        return out;
+    }, [ym, att, ctx, today]);
+    const yearTotal = last12.reduce((t, x) => t + x.v, 0);
+    const deltaColor = (v) => (v === null ? C.sub : v < -tol ? C.red : v > tol ? C.green : C.amber);
+    const setEntry = (iso, patch) => setAtt((a) => {
+        const cur = { ...(a.days[iso] || {}), ...patch };
+        Object.keys(cur).forEach((k) => { if (cur[k] === "" || cur[k] === null || cur[k] === undefined)
+            delete cur[k]; });
+        const d2 = { ...a.days };
+        if (Object.keys(cur).length)
+            d2[iso] = cur;
+        else
+            delete d2[iso];
+        return { ...a, days: d2 };
+    });
+    const setType = (x, t) => {
+        const inPlanner = onSetVacDay && vac && vac.years[x.iso.slice(0, 4)];
+        if (inPlanner) {
+            setEntry(x.iso, { type: "" });
+            onSetVacDay(x.iso, t === "work" ? null : t);
+        }
+        else
+            setEntry(x.iso, { type: t === "work" ? "" : t });
+    };
+    const shiftMonth = (n) => setYm((p) => { let m = p.m + n; let y = p.y; while (m < 0) {
+        m += 12;
+        y -= 1;
+    } while (m > 11) {
+        m -= 12;
+        y += 1;
+    } return { y, m }; });
+    const setSetting = (k, v) => setAtt((a) => ({ ...a, settings: { ...a.settings, [k]: v } }));
+    if (loading)
+        return React.createElement("div", { style: { fontFamily: FONT, background: PAGE_BG, minHeight: "100vh", color: C.blue, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 600 } }, "Opening your attendance...");
+    const progress = tDay.tin !== null && tDay.required > 0 ? Math.min(100, ((((_e = tDay.tout) !== null && _e !== void 0 ? _e : toMin(now.hm)) - tDay.tin + 1440) % 1440) / tDay.required * 100) : 0;
+    const workedSoFar = tDay.tin !== null ? ((((_f = tDay.tout) !== null && _f !== void 0 ? _f : toMin(now.hm)) - tDay.tin) + 1440) % 1440 : null;
+    const dayLabel = tDay.holiday ? tDay.holiday : tDay.weekend ? "Weekend" : tDay.type ? ATT_TYPES[tDay.type] : tDay.ramadan ? "Ramadan work day" : "Work day";
+    const timeInput = { ...inputStyle, width: 116, padding: "6px 6px", fontSize: 13, textAlign: "center" };
+    return (React.createElement("div", { style: { fontFamily: FONT, background: PAGE_BG, minHeight: "100vh", color: C.text, paddingBottom: 60 } },
+        React.createElement("div", { style: { position: "sticky", top: 0, zIndex: 50, background: "linear-gradient(90deg,#1a2235,#1e2d3d)", borderBottom: `1px solid ${C.line}`, padding: "14px 20px 0" } },
+            React.createElement("div", { style: { maxWidth: 1100, margin: "0 auto" } },
+                React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 10, marginBottom: 10 } },
+                    React.createElement("button", { onClick: onHome, style: btn(C.sub) }, "\u25C0 Home"),
+                    React.createElement("div", null,
+                        React.createElement("div", { style: { fontSize: 19, fontWeight: 800, color: C.head } }, "Attendance"),
+                        React.createElement("div", { style: { fontSize: 11, color: saveError ? C.red : C.sub } }, saveLabel))),
+                React.createElement("div", { style: { display: "flex", gap: 4 } }, [["log", "⏱️ Daily log"], ["setup", "⚙️ Setup"]].map(([v, l]) => (React.createElement("button", { key: v, onClick: () => setTab(v), style: { background: tab === v ? "rgba(100,181,246,0.15)" : "transparent", border: "none", borderBottom: tab === v ? `2px solid ${C.blue}` : "2px solid transparent", color: tab === v ? C.blue : "#7a8aaa", padding: "8px 14px", cursor: "pointer", fontSize: 13, fontWeight: 700, fontFamily: FONT } }, l)))))),
+        banner ? React.createElement("div", { style: { maxWidth: 1100, margin: "0 auto", padding: "16px 20px 0" } }, banner) : null,
+        React.createElement("div", { style: { padding: 20, maxWidth: 1100, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 } },
+            tab === "log" && (React.createElement(React.Fragment, null,
+                React.createElement("div", { style: { background: "linear-gradient(135deg, rgba(30,58,95,0.4), rgba(26,34,53,0.55))", border: `1px solid ${C.line}`, borderRadius: 16, padding: 20 } },
+                    React.createElement("div", { style: { display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "flex-start" } },
+                        React.createElement("div", null,
+                            React.createElement(Label, { color: C.blue },
+                                "Today, Riyadh time ",
+                                now.hm),
+                            React.createElement("div", { style: { fontSize: 22, fontWeight: 800, color: C.head, marginTop: 4 } }, niceDate(today)),
+                            React.createElement("div", { style: { fontSize: 13, color: C.sub, marginTop: 2 } },
+                                dayLabel,
+                                tDay.required > 0 ? `, ${dur(tDay.required)} required` : ", no hours required")),
+                        React.createElement("div", { style: { display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" } },
+                            React.createElement("div", null,
+                                React.createElement("div", { style: fieldLbl }, "In"),
+                                React.createElement("input", { type: "time", value: tDay.entry.in || "", onChange: (e) => setEntry(today, { in: e.target.value }), style: { ...timeInput, width: 110, fontSize: 16 } })),
+                            React.createElement("div", null,
+                                React.createElement("div", { style: fieldLbl }, "Out"),
+                                React.createElement("input", { type: "time", value: tDay.entry.out || "", onChange: (e) => setEntry(today, { out: e.target.value }), style: { ...timeInput, width: 110, fontSize: 16 } })))),
+                    React.createElement("div", { style: { marginTop: 16 } }, tDay.tin === null ? (React.createElement("button", { onClick: () => setEntry(today, { in: riyadhNow().hm }), style: { ...btn(C.green, true), padding: "14px 22px", fontSize: 16, borderRadius: 12 } },
+                        "Clock in now, ",
+                        now.hm)) : tDay.tout === null ? (React.createElement("div", null,
+                        React.createElement("div", { style: { display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" } },
+                            React.createElement("div", { style: { fontSize: 32, fontWeight: 800, color: C.head } }, dur(workedSoFar)),
+                            React.createElement("div", { style: { fontSize: 14, color: C.sub } },
+                                "worked so far",
+                                tDay.required > 0 ? `, full day at ${fromMin(tDay.tin + tDay.required)}` : "")),
+                        tDay.required > 0 && (React.createElement("div", { style: { height: 10, background: "#1a2235", borderRadius: 5, overflow: "hidden", margin: "10px 0 14px", maxWidth: 520 } },
+                            React.createElement("div", { style: { width: `${progress}%`, height: "100%", background: progress >= 100 ? C.green : C.blue } }))),
+                        React.createElement("button", { onClick: () => setEntry(today, { out: riyadhNow().hm }), style: { ...btn(C.amber, true), padding: "14px 22px", fontSize: 16, borderRadius: 12, color: "#1a1206" } },
+                            "Clock out now, ",
+                            now.hm))) : (React.createElement("div", { style: { display: "flex", alignItems: "baseline", gap: 12, flexWrap: "wrap" } },
+                        React.createElement("div", { style: { fontSize: 32, fontWeight: 800, color: C.head } }, dur(tDay.worked)),
+                        React.createElement("div", { style: { fontSize: 18, fontWeight: 800, color: deltaColor(tDay.delta) } }, dur(tDay.delta, true)),
+                        React.createElement("div", { style: { fontSize: 13, color: C.sub } }, "worked today, done \u2713"))))),
+                React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" } },
+                    React.createElement("button", { onClick: () => shiftMonth(-1), style: btn(C.sub) }, "\u25C0"),
+                    React.createElement("div", { style: { fontSize: 18, fontWeight: 800, color: C.head, minWidth: 150, textAlign: "center" } },
+                        MONTH_FULL[ym.m],
+                        " ",
+                        ym.y),
+                    React.createElement("button", { onClick: () => shiftMonth(1), style: btn(C.sub) }, "\u25B6"),
+                    (ym.y !== Number(today.slice(0, 4)) || ym.m !== Number(today.slice(5, 7)) - 1) && React.createElement("button", { onClick: () => { const [y, m] = today.split("-").map(Number); setYm({ y, m: m - 1 }); }, style: btn(C.blue) }, "This month")),
+                React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12 } },
+                    React.createElement(Card, { style: { borderColor: `${deltaColor(sum.balance)}66` } },
+                        React.createElement(Label, null, "Hour balance"),
+                        React.createElement("div", { style: { fontSize: 28, fontWeight: 800, color: deltaColor(sum.balance), marginTop: 4 } }, dur(sum.balance, true)),
+                        React.createElement("div", { style: { fontSize: 12, color: C.sub } },
+                            dur(sum.worked),
+                            " worked of ",
+                            dur(sum.required),
+                            " required")),
+                    React.createElement(Card, null,
+                        React.createElement(Label, null, "Days logged"),
+                        React.createElement("div", { style: { fontSize: 28, fontWeight: 800, color: C.head, marginTop: 4 } },
+                            sum.loggedDays,
+                            React.createElement("span", { style: { fontSize: 14, color: C.sub, fontWeight: 600 } },
+                                " / ",
+                                sum.workDays,
+                                " work days")),
+                        React.createElement("div", { style: { fontSize: 12, color: sum.missing ? C.amber : C.sub } },
+                            sum.missing ? `${sum.missing} past day${sum.missing === 1 ? "" : "s"} not logged` : "Nothing missing",
+                            sum.extraDays ? `, plus ${sum.extraDays} day${sum.extraDays === 1 ? "" : "s"} off worked` : "")),
+                    React.createElement(Card, null,
+                        React.createElement(Label, null, "Average day"),
+                        React.createElement("div", { style: { fontSize: 28, fontWeight: 800, color: C.head, marginTop: 4 } }, sum.avgWorked === null ? "-" : dur(sum.avgWorked)),
+                        React.createElement("div", { style: { fontSize: 12, color: C.sub } }, sum.avgIn === null ? "No logs yet" : `In ${fromMin(sum.avgIn)}, out ${fromMin(sum.avgOut)}`)),
+                    React.createElement(Card, null,
+                        React.createElement(Label, null, "Days away from work"),
+                        React.createElement("div", { style: { fontSize: 28, fontWeight: 800, color: C.head, marginTop: 4 } },
+                            sum.leave,
+                            React.createElement("span", { style: { fontSize: 14, color: C.sub, fontWeight: 600 } }, " leave")),
+                        React.createElement("div", { style: { fontSize: 12, color: C.sub } },
+                            sum.wfh,
+                            " WFH, ",
+                            sum.sick,
+                            " sick"))),
+                React.createElement(Card, { style: { padding: 0, overflow: "hidden" } },
+                    React.createElement("div", { style: { padding: "12px 16px", borderBottom: `1px solid ${C.line}`, display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" } },
+                        React.createElement("div", { style: { fontSize: 15, fontWeight: 800, color: C.head } }, "Day by day"),
+                        React.createElement("div", { style: { fontSize: 11, color: C.sub } },
+                            "Within ",
+                            tol,
+                            " min of the target is amber, above is green, below is red.")),
+                    days.map((x) => {
+                        const off = x.weekend || x.holiday;
+                        return (React.createElement("div", { key: x.iso, style: { display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", padding: "8px 16px", borderBottom: "1px solid #1e2a38", background: x.isToday ? "rgba(100,181,246,0.08)" : off ? "rgba(255,255,255,0.012)" : "transparent", opacity: off && !x.logged ? 0.55 : 1 } },
+                            React.createElement("div", { style: { width: 92, flexShrink: 0 } },
+                                React.createElement("div", { style: { fontSize: 13, fontWeight: 700, color: off ? C.sub : C.head } },
+                                    DOW_SHORT[x.dow],
+                                    " ",
+                                    x.d),
+                                React.createElement("div", { style: { fontSize: 10, color: x.ramadan ? C.teal : C.mute } }, x.holiday || (x.weekend ? "Weekend" : x.ramadan ? "Ramadan" : ""))),
+                            !off ? (React.createElement("select", { value: x.type || "work", onChange: (e) => setType(x, e.target.value), style: { ...selectStyle, width: 132, padding: "6px 6px", fontSize: 12, color: x.type === "wfh" ? C.amber : x.type ? "#90b4f5" : C.text } }, Object.entries(ATT_TYPES).map(([k, l]) => React.createElement("option", { key: k, value: k }, l)))) : (x.logged || openOff[x.iso] ? React.createElement("div", { style: { width: 132 } }) : null),
+                            off && !x.logged && !openOff[x.iso] && !x.entry.in && !x.entry.out ? (React.createElement("button", { onClick: () => setOpenOff((o) => ({ ...o, [x.iso]: true })), style: { ...btn(C.sub), padding: "4px 10px", fontSize: 11 } }, "Log hours")) : (React.createElement(React.Fragment, null,
+                                React.createElement("input", { type: "time", "aria-label": `In ${x.iso}`, value: x.entry.in || "", onChange: (e) => setEntry(x.iso, { in: e.target.value }), style: timeInput }),
+                                React.createElement("input", { type: "time", "aria-label": `Out ${x.iso}`, value: x.entry.out || "", onChange: (e) => setEntry(x.iso, { out: e.target.value }), style: timeInput }))),
+                            React.createElement("div", { style: { marginLeft: "auto", textAlign: "right", minWidth: 96 } }, x.logged ? (React.createElement(React.Fragment, null,
+                                React.createElement("div", { style: { fontSize: 13, color: C.text } }, dur(x.worked)),
+                                React.createElement("div", { style: { fontSize: 12, fontWeight: 700, color: deltaColor(x.delta) } }, dur(x.delta, true)))) : x.missing ? React.createElement("span", { style: { fontSize: 11, color: C.amber } }, "Not logged")
+                                : x.type === "wfh" && x.required > 0 ? React.createElement("span", { style: { fontSize: 11, color: C.sub } }, "Counts as full day") : null)));
+                    })),
+                React.createElement(Card, null,
+                    React.createElement("div", { style: { display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "baseline" } },
+                        React.createElement("div", { style: { fontSize: 15, fontWeight: 800, color: C.head } }, "Last 12 months"),
+                        React.createElement("div", { style: { fontSize: 13, color: C.sub } },
+                            "Total ",
+                            React.createElement("b", { style: { color: deltaColor(yearTotal) } }, dur(yearTotal, true)),
+                            ", about ",
+                            (Math.abs(yearTotal) / (toMin(att.settings.hours) || 540)).toFixed(1),
+                            " work days ",
+                            yearTotal >= 0 ? "extra" : "short")),
+                    React.createElement("div", { style: { marginTop: 10 } },
+                        React.createElement(MonthBars, { items: last12, tol: tol }))))),
+            tab === "setup" && (React.createElement(React.Fragment, null,
+                React.createElement(Card, null,
+                    React.createElement(SectionTitle, { n: "1", title: "Required hours", sub: "Hours you must spend at work each day. The difference each day is Out minus In minus these hours, like your Excel sheet." }),
+                    React.createElement("div", { style: { display: "flex", gap: 12, flexWrap: "wrap" } },
+                        React.createElement("div", null,
+                            React.createElement("div", { style: fieldLbl }, "Normal day"),
+                            React.createElement("input", { type: "time", value: att.settings.hours, onChange: (e) => setSetting("hours", e.target.value), style: { ...timeInput, width: 120, fontSize: 15 } })),
+                        React.createElement("div", null,
+                            React.createElement("div", { style: fieldLbl }, "Ramadan day"),
+                            React.createElement("input", { type: "time", value: att.settings.ramadanHours, onChange: (e) => setSetting("ramadanHours", e.target.value), style: { ...timeInput, width: 120, fontSize: 15 } })),
+                        React.createElement("div", null,
+                            React.createElement("div", { style: fieldLbl }, "Amber tolerance (minutes)"),
+                            React.createElement("input", { type: "number", value: att.settings.tolerance, onChange: (e) => setSetting("tolerance", e.target.value), style: { ...inputStyle, width: 120, fontSize: 15 } }))),
+                    React.createElement("div", { style: { fontSize: 12, color: C.sub, marginTop: 10, lineHeight: 1.5 } }, "Hours worked on a weekend or holiday count fully as extra. Work-from-home days count as a full day unless you log times.")),
+                React.createElement(Card, null,
+                    React.createElement(SectionTitle, { n: "2", title: "Ramadan periods", sub: "Days in these periods use the Ramadan hours. Ramadan dates set in the Vacation planner are used too." }),
+                    React.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-end", marginBottom: 10 } },
+                        React.createElement("div", null,
+                            React.createElement("div", { style: fieldLbl }, "First day"),
+                            React.createElement("input", { type: "date", value: newRam.start, onChange: (e) => setNewRam((r) => ({ ...r, start: e.target.value })), style: { ...inputStyle, width: 160 } })),
+                        React.createElement("div", null,
+                            React.createElement("div", { style: fieldLbl }, "Last day"),
+                            React.createElement("input", { type: "date", value: newRam.end, onChange: (e) => setNewRam((r) => ({ ...r, end: e.target.value })), style: { ...inputStyle, width: 160 } })),
+                        React.createElement("button", { disabled: !newRam.start || !newRam.end, onClick: () => { setAtt((a) => ({ ...a, ramadan: [...a.ramadan, { ...newRam }] })); setNewRam({ start: "", end: "" }); }, style: { ...btn(C.teal, true), opacity: newRam.start && newRam.end ? 1 : 0.4 } }, "Add")),
+                    att.ramadan.map((r, i) => (React.createElement("div", { key: i, style: { display: "flex", gap: 10, alignItems: "center", fontSize: 13, padding: "6px 0" } },
+                        React.createElement("span", null,
+                            niceDate(r.start),
+                            " ",
+                            r.start.slice(0, 4),
+                            " to ",
+                            niceDate(r.end)),
+                        React.createElement("button", { onClick: () => setAtt((a) => ({ ...a, ramadan: a.ramadan.filter((_, j) => j !== i) })), style: { ...btn(C.red), padding: "4px 9px" } }, "\u2715"))))),
+                React.createElement(Card, null,
+                    React.createElement(SectionTitle, { n: "3", title: "Holidays before 2027", sub: "Holidays for years in the Vacation planner come from there. Add older ones here." }),
+                    React.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-end", marginBottom: 10 } },
+                        React.createElement("div", null,
+                            React.createElement("div", { style: fieldLbl }, "Date"),
+                            React.createElement("input", { type: "date", value: newHol.date, onChange: (e) => setNewHol((h) => ({ ...h, date: e.target.value })), style: { ...inputStyle, width: 160 } })),
+                        React.createElement("div", { style: { flex: "1 1 180px" } },
+                            React.createElement("div", { style: fieldLbl }, "Name"),
+                            React.createElement("input", { type: "text", value: newHol.name, onChange: (e) => setNewHol((h) => ({ ...h, name: e.target.value })), style: inputStyle })),
+                        React.createElement("button", { disabled: !newHol.date, onClick: () => { setAtt((a) => ({ ...a, holidays: [...a.holidays.filter((h) => h.date !== newHol.date), { date: newHol.date, name: newHol.name.trim() || "Holiday" }].sort((p, q) => (p.date < q.date ? -1 : 1)) })); setNewHol({ date: "", name: "" }); }, style: { ...btn(C.purple, true), opacity: newHol.date ? 1 : 0.4 } }, "Add")),
+                    att.holidays.map((h) => (React.createElement("div", { key: h.date, style: { display: "flex", gap: 10, alignItems: "center", fontSize: 13, padding: "5px 0" } },
+                        React.createElement("span", { style: { width: 130 } },
+                            niceDate(h.date),
+                            " ",
+                            h.date.slice(0, 4)),
+                        React.createElement("span", { style: { flex: 1, color: C.sub } }, h.name),
+                        React.createElement("button", { onClick: () => setAtt((a) => ({ ...a, holidays: a.holidays.filter((x) => x.date !== h.date) })), style: { ...btn(C.red), padding: "4px 9px" } }, "\u2715"))))))))));
+}
 /* ============ Cloud sync (Supabase table app_state, one row per tool) ============ */
 const TABLE = "app_state";
 const cacheName = (k) => `familyhub_${k}`;
@@ -1935,14 +2352,15 @@ function SignIn({ sb }) {
 const TOOLS = [
     { id: "budget", icon: "💰", title: "Budget", text: "Salary, spending, installments and a forecast to May 2030.", ready: true },
     { id: "vacation", icon: "✈️", title: "Vacation planner", text: "Leave balance, trips home and what each trip costs.", ready: true },
-    { id: "tool3", icon: "＋", title: "New tool", text: "A space for the next tool we build.", ready: false, soon: "Coming soon", empty: true },
+    { id: "attendance", icon: "⏱️", title: "Attendance", text: "Clock in and out, hours per day and per month.", ready: true },
     { id: "tool4", icon: "＋", title: "New tool", text: "A space for the next tool we build.", ready: false, soon: "Coming soon", empty: true },
 ];
-function Home({ email, budget, vacation, ticketPlan, onOpen, onSignOut, signOutArmed }) {
+function Home({ email, budget, vacation, attendance, ticketPlan, onOpen, onSignOut, signOutArmed }) {
     const hr = new Date().getHours();
     const hello = hr < 12 ? "Good morning" : hr < 18 ? "Good afternoon" : "Good evening";
     const status = budget.phase === "ready" ? budgetStatus(budget.data, ticketPlan) : null;
     const vstatus = vacation.phase === "ready" ? vacationStatus(vacation.data) : null;
+    const astatus = attendance.phase === "ready" ? attendanceStatus(attendance.data, vacation.data) : null;
     return (React.createElement("div", { style: { fontFamily: FONT, background: PAGE_BG, minHeight: "100vh", color: C.text, paddingBottom: 40 } },
         React.createElement("div", { style: { maxWidth: 980, margin: "0 auto", padding: "28px 20px 0" } },
             React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" } },
@@ -1965,7 +2383,9 @@ function Home({ email, budget, vacation, ticketPlan, onOpen, onSignOut, signOutA
                             React.createElement("span", { style: badge(status.color) }, status.text),
                             budget.data && React.createElement("div", { style: { fontSize: 12, color: C.sub, marginTop: 6 } },
                                 "Balance now ",
-                                fmt(status.balance))))) : t.id === "vacation" ? (vacation.phase === "loading" ? React.createElement("span", { style: { fontSize: 12, color: C.sub } }, "Checking...")
+                                fmt(status.balance))))) : t.id === "attendance" ? (attendance.phase === "loading" ? React.createElement("span", { style: { fontSize: 12, color: C.sub } }, "Checking...")
+                    : attendance.phase === "error" ? React.createElement("span", { style: badge(C.red) }, "Can't reach the database")
+                        : React.createElement("span", { style: badge(astatus.color) }, astatus.text)) : t.id === "vacation" ? (vacation.phase === "loading" ? React.createElement("span", { style: { fontSize: 12, color: C.sub } }, "Checking...")
                     : vacation.phase === "error" ? React.createElement("span", { style: badge(C.red) }, "Can't reach the database")
                         : React.createElement("span", { style: badge(vstatus.color) }, vstatus.text)) : React.createElement("span", { style: badge(C.sub) }, t.soon)))))),
             React.createElement("div", { style: { fontSize: 12, color: budget.error ? C.amber : C.mute, marginTop: 18 } },
@@ -1991,6 +2411,7 @@ function App() {
     const [screen, setScreen] = useState("home");
     const [signOutArmed, setSignOutArmed] = useState(false);
     const [vacIntro, setVacIntro] = useState(false);
+    const [attIntro, setAttIntro] = useState(false);
     useEffect(() => {
         if (!sb)
             return undefined;
@@ -2000,6 +2421,7 @@ function App() {
     }, [sb]);
     const budget = useCloudDoc(sb, "budget", !!session);
     const vacation = useCloudDoc(sb, "vacation", !!session);
+    const attendance = useCloudDoc(sb, "attendance", !!session);
     const ticketPlan = useMemo(() => (vacation.phase === "ready" ? vacationTicketPlan(vacation.data) : null), [vacation.phase, vacation.data]);
     if (!sb)
         return React.createElement(SetupNeeded, null);
@@ -2009,7 +2431,7 @@ function App() {
     if (!session)
         return React.createElement(SignIn, { sb: sb });
     const signOut = async () => {
-        if ((budget.hasUnsaved() || vacation.hasUnsaved()) && !signOutArmed) {
+        if ((budget.hasUnsaved() || vacation.hasUnsaved() || attendance.hasUnsaved()) && !signOutArmed) {
             setSignOutArmed(true);
             return;
         }
@@ -2051,6 +2473,49 @@ function App() {
         }
         return (React.createElement(BudgetTool, { initial: budget.data, rev: budget.rev, onChange: budget.change, saveLabel: budget.status, saveError: budget.error, onHome: () => setScreen("home"), banner: banner, ticketPlan: ticketPlan }));
     }
+    if (screen === "attendance") {
+        if (attendance.phase === "loading" || vacation.phase === "loading")
+            return React.createElement(CenterCard, null,
+                React.createElement("div", { style: { color: C.blue, fontWeight: 700 } }, "Opening your attendance..."));
+        if (attendance.phase === "error") {
+            return (React.createElement(CenterCard, null,
+                React.createElement("div", { style: { fontSize: 20, fontWeight: 800, color: C.head } }, "Can't reach the database"),
+                React.createElement("p", { style: { fontSize: 14, color: C.sub, lineHeight: 1.6 } }, "Check your internet connection, then reload this page."),
+                React.createElement("button", { onClick: () => window.location.reload(), style: btn(C.blue, true) }, "Reload")));
+        }
+        let abanner = null;
+        if (attendance.conflict) {
+            abanner = (React.createElement(Notice, { color: C.red },
+                React.createElement("span", { style: { flex: "1 1 320px" } },
+                    React.createElement("b", null, "Attendance was changed on another device"),
+                    " while you were editing here, so your latest change was not saved. Choose which version to keep."),
+                React.createElement("button", { onClick: attendance.useLatest, style: btn(C.blue, true) }, "Load the latest"),
+                React.createElement("button", { onClick: attendance.keepMine, style: btn(C.red) }, "Keep mine")));
+        }
+        else if (attIntro) {
+            abanner = (React.createElement(Notice, { color: C.blue },
+                React.createElement("span", { style: { flex: "1 1 320px" } }, "Your attendance from Nov 2025 to Oct 2026 was loaded from your Excel sheet: 224 logged days, matching your sheet's total of +207:39."),
+                React.createElement("button", { onClick: () => setAttIntro(false), style: btn(C.sub) }, "OK")));
+        }
+        else if (attendance.notice) {
+            abanner = (React.createElement(Notice, { color: C.green },
+                React.createElement("span", { style: { flex: "1 1 320px" } }, attendance.notice),
+                React.createElement("button", { onClick: attendance.dismissNotice, style: btn(C.sub) }, "OK")));
+        }
+        const setVacDay = (iso, t) => {
+            const v = normVac(vacation.data);
+            const y = iso.slice(0, 4);
+            if (!v.years[y])
+                return;
+            const daysMap = { ...normYear(v.years[y]).days };
+            if (t)
+                daysMap[iso] = t;
+            else
+                delete daysMap[iso];
+            vacation.change({ ...v, years: { ...v.years, [y]: { ...v.years[y], days: daysMap } } });
+        };
+        return React.createElement(AttendanceTool, { initial: attendance.data, rev: attendance.rev, onChange: attendance.change, saveLabel: attendance.status, saveError: attendance.error, onHome: () => setScreen("home"), banner: abanner, vacationData: vacation.data, onSetVacDay: setVacDay });
+    }
     if (screen === "vacation") {
         if (vacation.phase === "loading")
             return React.createElement(CenterCard, null,
@@ -2082,8 +2547,9 @@ function App() {
         }
         return React.createElement(VacationTool, { initial: vacation.data, rev: vacation.rev, onChange: vacation.change, saveLabel: vacation.status, saveError: vacation.error, onHome: () => setScreen("home"), banner: vbanner });
     }
-    return React.createElement(Home, { email: ((_e = session.user) === null || _e === void 0 ? void 0 : _e.email) || "", budget: budget, vacation: vacation, ticketPlan: ticketPlan, onOpen: (id) => { var _e; setSignOutArmed(false); if (id === "vacation" && vacation.phase === "ready" && !vacation.exists)
-            setVacIntro(true); if (id === "budget" || id === "vacation") {
+    return React.createElement(Home, { email: ((_e = session.user) === null || _e === void 0 ? void 0 : _e.email) || "", budget: budget, vacation: vacation, attendance: attendance, ticketPlan: ticketPlan, onOpen: (id) => { var _e; setSignOutArmed(false); if (id === "vacation" && vacation.phase === "ready" && !vacation.exists)
+            setVacIntro(true); if (id === "attendance" && attendance.phase === "ready" && !attendance.exists)
+            setAttIntro(true); if (id === "budget" || id === "vacation" || id === "attendance") {
             setScreen(id);
             (_e = window.scrollTo) === null || _e === void 0 ? void 0 : _e.call(window, 0, 0);
         } }, onSignOut: signOut, signOutArmed: signOutArmed });
