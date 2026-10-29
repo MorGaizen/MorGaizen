@@ -1058,6 +1058,21 @@ function BalanceChart({ data, buffer, nowIdx }) {
                 sfmt(h.flow))))));
 }
 /* ============ Vacation planner ============ */
+const EXCEL_2027 = {
+    leave: ["2027-01-07", "2027-01-10", "2027-02-07", "2027-02-08", "2027-02-09", "2027-02-10", "2027-02-11", "2027-04-11", "2027-05-11", "2027-05-12",
+        "2027-05-13", "2027-06-20", "2027-07-18", "2027-08-19", "2027-08-22", "2027-08-23", "2027-08-24", "2027-08-25", "2027-08-26", "2027-09-26",
+        "2027-10-24", "2027-11-25", "2027-11-28"],
+    wfh: ["2027-01-06", "2027-02-04", "2027-03-04", "2027-04-08", "2027-05-23", "2027-06-17", "2027-07-15", "2027-08-18", "2027-09-22", "2027-10-21", "2027-11-24"],
+};
+/* The first version of the plan, read from an older DA27 sheet. A saved plan that still matches it exactly is upgraded automatically. */
+const OLD_2027_KEY = "2027-01-28w|2027-01-31l|2027-02-01l|2027-02-02l|2027-02-03l|2027-02-04l|2027-02-21w|2027-03-04w|2027-04-08w|2027-04-11l|2027-05-09l|2027-05-10l|2027-05-11l|2027-05-12l|2027-05-13l|2027-05-23w|2027-06-17w|2027-06-20l|2027-07-15w|2027-07-18l|2027-08-18w|2027-08-19l|2027-08-22l|2027-08-23l|2027-08-24l|2027-08-25l|2027-08-26l|2027-09-26l|2027-09-27w|2027-10-21w|2027-10-24l|2027-11-24w|2027-11-25l|2027-11-28l";
+const excelDays2027 = () => Object.assign({}, ...EXCEL_2027.leave.map((d) => ({ [d]: "leave" })), ...EXCEL_2027.wfh.map((d) => ({ [d]: "wfh" })));
+const daysKey = (days) => Object.keys(days || {}).sort().map((d) => `${d}${(days[d] || "")[0]}`).join("|");
+const upgradeOldPlan = (raw) => {
+    if (!raw || !raw.years || !raw.years[2027] || daysKey(raw.years[2027].days) !== OLD_2027_KEY)
+        return null;
+    return { ...raw, years: { ...raw.years, 2027: { ...raw.years[2027], days: excelDays2027() } } };
+};
 const VAC_SEED = {
     trips: [],
     years: {
@@ -1072,10 +1087,7 @@ const VAC_SEED = {
                 { date: "2027-05-19", name: "Eid al-Adha" }, { date: "2027-05-20", name: "Eid al-Adha" },
                 { date: "2027-09-23", name: "Saudi National Day" },
             ],
-            days: Object.assign({}, ...["2027-01-31", "2027-02-01", "2027-02-02", "2027-02-03", "2027-02-04", "2027-04-11", "2027-05-09", "2027-05-10", "2027-05-11", "2027-05-12",
-                "2027-05-13", "2027-06-20", "2027-07-18", "2027-08-19", "2027-08-22", "2027-08-23", "2027-08-24", "2027-08-25", "2027-08-26", "2027-09-26",
-                "2027-10-24", "2027-11-25", "2027-11-28"].map((d) => ({ [d]: "leave" })), ...["2027-01-28", "2027-02-21", "2027-03-04", "2027-04-08", "2027-05-23", "2027-06-17", "2027-07-15", "2027-08-18", "2027-09-27",
-                "2027-10-21", "2027-11-24"].map((d) => ({ [d]: "wfh" }))),
+            days: Object.assign({}, ...EXCEL_2027.leave.map((d) => ({ [d]: "leave" })), ...EXCEL_2027.wfh.map((d) => ({ [d]: "wfh" }))),
         },
     },
 };
@@ -1299,8 +1311,9 @@ function VacationTool({ initial, rev, onChange, saveLabel, saveError, onHome, ba
     const [pendingDelete, setPendingDelete] = useState(null);
     const [newHol, setNewHol] = useState({ date: "", name: "" });
     useEffect(() => {
-        setVac(normVac(initial));
-        skipNextRef.current = !!initial;
+        const upgraded = upgradeOldPlan(initial);
+        setVac(normVac(upgraded || initial));
+        skipNextRef.current = !!initial && !upgraded;
         setLoading(false);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [rev]);
@@ -1647,8 +1660,11 @@ function VacationTool({ initial, rev, onChange, saveLabel, saveError, onHome, ba
                             React.createElement("input", { type: "text", value: h.name, onChange: (e) => setYearData((Y) => ({ ...Y, holidays: Y.holidays.map((x) => (x.date === h.date ? { ...x, name: e.target.value } : x)) })), style: { ...inputStyle, flex: "1 1 160px", width: "auto", padding: "6px 9px" } }),
                             React.createElement("button", { onClick: () => askDelete(id, () => setYearData((Y) => ({ ...Y, holidays: Y.holidays.filter((x) => x.date !== h.date) }))), style: { ...btn(C.red), padding: "5px 10px" } }, pendingDelete === id ? "Sure?" : "✕")));
                     }))),
+                year === "2027" && (React.createElement(Card, null,
+                    React.createElement(SectionTitle, { n: "4", title: "Reload 2027 from the Excel sheet", sub: "Replaces 2027's leave and work-from-home days with the plan from your Excel file (23 leave days, 11 WFH days). Holidays, ticket prices and notes stay as they are." }),
+                    React.createElement("button", { onClick: () => askDelete("excel2027", () => setYearData((Y) => ({ ...Y, days: excelDays2027() }))), style: btn(C.amber) }, pendingDelete === "excel2027" ? "Tap again to replace 2027" : "Reload 2027 from Excel"))),
                 years.length > 1 && (React.createElement(Card, null,
-                    React.createElement(SectionTitle, { n: "4", title: `Remove ${year}`, sub: "Deletes every day, holiday and trip note for this year." }),
+                    React.createElement(SectionTitle, { n: "5", title: `Remove ${year}`, sub: "Deletes every day, holiday and trip note for this year." }),
                     React.createElement("button", { onClick: () => askDelete(`year:${year}`, () => { setVac((v) => { const y2 = { ...v.years }; delete y2[year]; return { ...v, years: y2 }; }); setYear(years.find((y) => y !== year)); }), style: btn(C.red) }, pendingDelete === `year:${year}` ? `Tap again to delete ${year}` : `Delete ${year}`))))))));
 }
 /* ============ Cloud sync (Supabase table app_state, one row per tool) ============ */
